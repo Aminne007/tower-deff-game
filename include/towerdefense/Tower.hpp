@@ -32,6 +32,9 @@ public:
     [[nodiscard]] double range() const noexcept { return range_; }
     [[nodiscard]] int damage() const noexcept { return damage_; }
     [[nodiscard]] const Materials& cost() const noexcept { return cost_; }
+    [[nodiscard]] int level() const noexcept { return level_; }
+
+    void upgrade(int damage_bonus, double range_bonus, int fire_rate_bonus);
 
 protected:
     std::string name_;
@@ -41,6 +44,7 @@ protected:
     int fire_rate_ticks_{};
     int cooldown_{};
     Materials cost_;
+    int level_{1};
 };
 
 using TowerPtr = std::unique_ptr<Tower>;

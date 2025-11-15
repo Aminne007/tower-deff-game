@@ -21,6 +21,7 @@ add_library(towerdefense
     src/Wave.cpp
     src/GridPosition.cpp
     src/Materials.cpp
+    src/ResourceManager.cpp
 )
 
 target_include_directories(towerdefense

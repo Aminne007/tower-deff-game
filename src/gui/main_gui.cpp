@@ -13,6 +13,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using namespace towerdefense;
@@ -21,9 +22,9 @@ namespace {
 
 Wave create_default_wave() {
     Wave wave{2};
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Orc", 10, 0.8, Materials{0, 1, 0}});
+    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}, Materials{1, 0, 0}});
+    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}, Materials{1, 0, 0}});
+    wave.add_creature(Creature{"Orc", 10, 0.8, Materials{0, 1, 0}, Materials{0, 1, 0}});
     return wave;
 }
 
@@ -78,6 +79,24 @@ std::string tile_name(TileType tile) {
         return "Tower";
     case TileType::Blocked:
         return "Blocked";
+    }
+    return "Unknown";
+}
+
+std::string_view transaction_kind_label(ResourceManager::TransactionKind kind) {
+    switch (kind) {
+    case ResourceManager::TransactionKind::Income:
+        return "Income";
+    case ResourceManager::TransactionKind::Spend:
+        return "Spend";
+    case ResourceManager::TransactionKind::Refund:
+        return "Refund";
+    case ResourceManager::TransactionKind::PassiveIncome:
+        return "Passive";
+    case ResourceManager::TransactionKind::Theft:
+        return "Theft";
+    case ResourceManager::TransactionKind::Ability:
+        return "Ability";
     }
     return "Unknown";
 }
@@ -162,6 +181,8 @@ int main(int argc, char* argv[]) {
             {"frost", "Frost", sf::Color(120, 200, 255)},
         };
         std::string selected_tower = tower_options.front().id;
+        game.resources().set_upcoming_requirement(TowerFactory::cost(selected_tower),
+            "Build " + tower_options.front().label);
 
         bool auto_tick = false;
         sf::Clock auto_tick_clock;
@@ -204,6 +225,8 @@ int main(int argc, char* argv[]) {
                         const std::size_t index = static_cast<std::size_t>((mouse_pos.y - tower_panel_bounds.top) / 40.f);
                         if (index < tower_options.size()) {
                             selected_tower = tower_options[index].id;
+                            game.resources().set_upcoming_requirement(TowerFactory::cost(selected_tower),
+                                "Build " + tower_options[index].label);
                             std::ostringstream oss;
                             oss << "Selected " << tower_options[index].label << " tower.";
                             set_status(oss.str(), sf::Color(230, 230, 230), status_text, status_color, status_clock);
@@ -359,6 +382,27 @@ int main(int argc, char* argv[]) {
             info_text.setFillColor(sf::Color(230, 230, 230));
             window.draw(info_text);
 
+            std::ostringstream economy_panel;
+            if (const auto summary = game.resources().last_wave_income()) {
+                economy_panel << "Last wave: " << summary->income.to_string() << '\n';
+                economy_panel << (summary->flawless ? "Flawless" : "Damaged") << ", "
+                               << (summary->early_call ? "Early call" : "On time") << '\n';
+            } else {
+                economy_panel << "No waves completed yet\n\n";
+            }
+            economy_panel << "Passive income: "
+                          << static_cast<int>(game.resources().passive_progress() * 100.0) << "%\n";
+            if (const auto requirement = game.resources().upcoming_requirement()) {
+                economy_panel << "Upcoming: " << requirement->second << " -> "
+                              << requirement->first.to_string();
+            } else {
+                economy_panel << "Upcoming: none";
+            }
+            sf::Text economy_text(economy_panel.str(), font, 16);
+            economy_text.setFillColor(sf::Color(200, 200, 200));
+            economy_text.setPosition(margin + 520.f, 100.f);
+            window.draw(economy_text);
+
             // Tile info
             std::ostringstream tile_info;
             if (has_hovered_tile) {
@@ -377,6 +421,26 @@ int main(int argc, char* argv[]) {
             tile_text.setFillColor(sf::Color(200, 200, 200));
             tile_text.setPosition(margin, static_cast<float>(window_height) - bottom_panel_height + 60.f);
             window.draw(tile_text);
+
+            std::ostringstream log_stream;
+            log_stream << "Transactions:\n";
+            int displayed = 0;
+            for (const auto& tx : game.resources().transactions()) {
+                if (displayed >= 5) {
+                    break;
+                }
+                log_stream << "  [" << transaction_kind_label(tx.kind) << "] " << tx.description << " -> "
+                           << tx.delta.to_string() << '\n';
+                ++displayed;
+            }
+            if (displayed == 0) {
+                log_stream << "  No entries yet\n";
+            }
+            sf::Text log_text(log_stream.str(), font, 14);
+            log_text.setFillColor(sf::Color(180, 180, 200));
+            log_text.setPosition(window_width - margin - 320.f,
+                static_cast<float>(window_height) - bottom_panel_height + 20.f);
+            window.draw(log_text);
 
             // Instructions
             sf::Text instructions("Controls: Queue Wave, run Tick, toggle Auto-Tick, select a tower, then click the map to build. \nPress ESC or close the window to exit.", font, 14);

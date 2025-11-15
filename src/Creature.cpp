@@ -5,12 +5,13 @@
 
 namespace towerdefense {
 
-Creature::Creature(std::string name, int max_health, double speed, Materials reward)
+Creature::Creature(std::string name, int max_health, double speed, Materials reward, Materials steal)
     : name_(std::move(name))
     , max_health_(max_health)
     , health_(max_health)
     , speed_(speed)
-    , reward_(std::move(reward)) {
+    , reward_(std::move(reward))
+    , steal_amount_(std::move(steal)) {
     if (max_health <= 0) {
         throw std::invalid_argument("Creature must have positive health");
     }

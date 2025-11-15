@@ -10,7 +10,7 @@ namespace towerdefense {
 
 class Creature {
 public:
-    Creature(std::string name, int max_health, double speed, Materials reward);
+    Creature(std::string name, int max_health, double speed, Materials reward, Materials steal = Materials{});
 
     void assign_path(std::vector<GridPosition> path);
     void start_returning(std::vector<GridPosition> path);
@@ -27,6 +27,7 @@ public:
     [[nodiscard]] const std::string& name() const noexcept { return name_; }
     [[nodiscard]] int health() const noexcept { return health_; }
     [[nodiscard]] const Materials& reward() const noexcept { return reward_; }
+    [[nodiscard]] const Materials& steal_amount() const noexcept { return steal_amount_; }
 
     void mark_goal_reached();
     void mark_exited();
@@ -46,6 +47,7 @@ private:
     double slow_factor_{1.0};
     int slow_duration_{0};
     Materials reward_;
+    Materials steal_amount_;
 };
 
 } // namespace towerdefense

@@ -2,6 +2,7 @@
 
 #include "towerdefense/Creature.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
@@ -35,6 +36,13 @@ void Tower::tick() {
 
 void Tower::reset_cooldown() {
     cooldown_ = fire_rate_ticks_;
+}
+
+void Tower::upgrade(int damage_bonus, double range_bonus, int fire_rate_bonus) {
+    damage_ += damage_bonus;
+    range_ = std::max(0.5, range_ + range_bonus);
+    fire_rate_ticks_ = std::max(1, fire_rate_ticks_ - fire_rate_bonus);
+    ++level_;
 }
 
 double distance(const GridPosition& lhs, const GridPosition& rhs) noexcept {

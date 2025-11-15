@@ -52,32 +52,14 @@ Map::Map(std::size_t width, std::size_t height, Grid grid)
     , height_(height)
     , grid_(std::move(grid)) {}
 
-Map Map::load_from_file(const std::string& path) {
-    std::ifstream file{path};
-    if (!file) {
-        throw std::runtime_error("Failed to open map file: " + path);
-    }
-
-    std::vector<std::string> lines;
-    std::string line;
-    while (std::getline(file, line)) {
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back();
-        }
-        if (!line.empty()) {
-            lines.push_back(line);
-        }
-    }
-
+namespace {
+Map build_from_lines(const std::vector<std::string>& lines, const std::string& source) {
     if (lines.empty()) {
-        throw std::runtime_error("Map file is empty: " + path);
+        throw std::runtime_error("Map source is empty: " + source);
     }
 
     const auto height = lines.size();
     const auto width = lines.front().size();
-
-    Map::Grid grid;
-    grid.reserve(width * height);
 
     Map map{width, height, {}};
     map.grid_.reserve(width * height);
@@ -105,6 +87,31 @@ Map Map::load_from_file(const std::string& path) {
     }
 
     return map;
+}
+} // namespace
+
+Map Map::load_from_file(const std::string& path) {
+    std::ifstream file{path};
+    if (!file) {
+        throw std::runtime_error("Failed to open map file: " + path);
+    }
+
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (!line.empty()) {
+            lines.push_back(line);
+        }
+    }
+
+    return build_from_lines(lines, path);
+}
+
+Map Map::from_lines(const std::vector<std::string>& lines) {
+    return build_from_lines(lines, "generated source");
 }
 
 TileType Map::at(const GridPosition& pos) const {

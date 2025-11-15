@@ -16,6 +16,7 @@ struct GameEvent {
     enum class Type {
         Play,
         LevelChosen,
+        RandomLevel,
         Pause,
         Resume,
         Quit,

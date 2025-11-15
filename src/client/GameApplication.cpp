@@ -2,8 +2,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <filesystem>
+#include <fstream>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <system_error>
+#include <vector>
 
 namespace client {
 
@@ -24,21 +30,138 @@ sf::Font load_font() {
     throw std::runtime_error("Unable to load a font. Place DejaVuSans.ttf in the data directory.");
 }
 
-std::vector<std::filesystem::path> find_levels() {
-    std::vector<std::filesystem::path> levels;
-    const std::filesystem::path data_dir{"data"};
-    if (!std::filesystem::exists(data_dir)) {
+const std::filesystem::path kMapsDirectory{"data/maps"};
+
+bool is_space(char c) {
+    return std::isspace(static_cast<unsigned char>(c)) != 0;
+}
+
+std::string trim_copy(const std::string& text) {
+    const auto begin = std::find_if_not(text.begin(), text.end(), is_space);
+    const auto end = std::find_if_not(text.rbegin(), text.rend(), is_space).base();
+    if (begin >= end) {
+        return {};
+    }
+    return std::string(begin, end);
+}
+
+std::optional<std::string> parse_difficulty_marker(const std::string& line) {
+    std::string lowered = line;
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
+    const std::array<std::string, 3> markers{"# difficulty:", "// difficulty:", "; difficulty:"};
+    for (const auto& marker : markers) {
+        if (lowered.rfind(marker, 0) == 0) {
+            const std::string value = trim_copy(line.substr(marker.size()));
+            if (!value.empty()) {
+                return value;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+std::string infer_difficulty(const std::vector<std::string>& lines) {
+    if (lines.empty()) {
+        return "Unknown";
+    }
+    const double total_tiles = static_cast<double>(lines.size() * lines.front().size());
+    std::size_t path_tiles = 0;
+    std::size_t blocked_tiles = 0;
+    for (const auto& row : lines) {
+        for (char c : row) {
+            if (c == '#') {
+                ++path_tiles;
+            } else if (c == 'B') {
+                ++blocked_tiles;
+            }
+        }
+    }
+    const double density = total_tiles > 0 ? static_cast<double>(path_tiles + blocked_tiles) / total_tiles : 0.0;
+    if (density < 0.12) {
+        return "Easy";
+    }
+    if (density < 0.25) {
+        return "Normal";
+    }
+    return "Hard";
+}
+
+std::string format_level_name(const std::filesystem::path& path, const std::filesystem::path& root_hint) {
+    std::string name;
+    if (!root_hint.empty()) {
+        std::error_code ec;
+        auto relative = std::filesystem::relative(path, root_hint, ec);
+        if (!ec) {
+            relative.replace_extension();
+            name = relative.generic_string();
+        }
+    }
+    if (name.empty()) {
+        name = path.stem().string();
+    }
+    std::replace(name.begin(), name.end(), '_', ' ');
+    return name;
+}
+
+LevelMetadata build_level_metadata(const std::filesystem::path& path, const std::filesystem::path& root_hint) {
+    LevelMetadata metadata;
+    metadata.path = path;
+    metadata.name = format_level_name(path, root_hint);
+    metadata.difficulty = "Unknown";
+
+    std::ifstream file{path};
+    if (!file) {
+        return metadata;
+    }
+
+    std::vector<std::string> rows;
+    std::string line;
+    std::optional<std::string> declared;
+    while (std::getline(file, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        const std::string trimmed = trim_copy(line);
+        if (trimmed.empty()) {
+            continue;
+        }
+        if (!declared) {
+            if (auto marker = parse_difficulty_marker(trimmed)) {
+                declared = marker;
+                continue;
+            }
+        }
+        rows.push_back(line);
+    }
+
+    if (declared) {
+        metadata.difficulty = *declared;
+    } else if (!rows.empty()) {
+        metadata.difficulty = infer_difficulty(rows);
+    }
+
+    return metadata;
+}
+
+std::vector<LevelMetadata> find_levels() {
+    std::vector<LevelMetadata> levels;
+    if (!std::filesystem::exists(kMapsDirectory)) {
         return levels;
     }
-    for (const auto& entry : std::filesystem::directory_iterator(data_dir)) {
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(kMapsDirectory)) {
         if (!entry.is_regular_file()) {
             continue;
         }
-        if (entry.path().extension() == ".txt") {
-            levels.push_back(entry.path());
+        if (entry.path().extension() != ".txt") {
+            continue;
         }
+        levels.push_back(build_level_metadata(entry.path(), kMapsDirectory));
     }
-    std::sort(levels.begin(), levels.end());
+    std::sort(levels.begin(), levels.end(), [](const LevelMetadata& lhs, const LevelMetadata& rhs) {
+        return lhs.name < rhs.name;
+    });
     return levels;
 }
 
@@ -102,6 +225,9 @@ void GameApplication::process_game_event(const GameEvent& event) {
             switch_to_gameplay(event.level_path);
         }
         break;
+    case GameEvent::Type::RandomLevel:
+        switch_to_random_gameplay();
+        break;
     case GameEvent::Type::Pause:
         if (mode_ == Mode::Gameplay && state_) {
             suspended_state_ = std::move(state_);
@@ -153,10 +279,19 @@ void GameApplication::switch_to_summary(const std::string& message) {
     set_state(std::make_unique<SummaryState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize(), message), Mode::Summary);
 }
 
+void GameApplication::switch_to_random_gameplay() {
+    try {
+        session_.load_random_level();
+        set_state(std::make_unique<GameplayState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize()), Mode::Gameplay);
+    } catch (const std::exception& ex) {
+        switch_to_summary(ex.what());
+    }
+}
+
 void GameApplication::discover_levels() {
     levels_ = find_levels();
     if (levels_.empty()) {
-        levels_.push_back(std::filesystem::path{"data"} / "default_map.txt");
+        levels_.push_back(build_level_metadata(std::filesystem::path{"data"} / "default_map.txt", {}));
     }
 }
 

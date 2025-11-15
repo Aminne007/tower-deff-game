@@ -17,6 +17,7 @@ public:
     SimulationSession();
 
     void load_level(const std::filesystem::path& level_path);
+    void load_random_level();
     void unload();
 
     bool has_game() const;

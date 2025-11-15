@@ -1,6 +1,7 @@
 #include "towerdefense/Materials.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <sstream>
 
 namespace towerdefense {
@@ -28,6 +29,17 @@ void Materials::add(const Materials& other) {
     for (std::size_t i = 0; i < storage_.size(); ++i) {
         storage_[i] += other.storage_[i];
     }
+}
+
+Materials Materials::scaled(double factor) const {
+    if (factor <= 0.0) {
+        return {};
+    }
+    Materials result;
+    for (std::size_t i = 0; i < storage_.size(); ++i) {
+        result.storage_[i] = static_cast<int>(std::lround(static_cast<double>(storage_[i]) * factor));
+    }
+    return result;
 }
 
 std::string Materials::to_string() const {

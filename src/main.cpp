@@ -16,6 +16,8 @@ void print_help() {
               << "  show - Render the current game state\n"
               << "  towers - List available tower types\n"
               << "  build <type> <x> <y> - Place a tower\n"
+              << "  upgrade <x> <y> - Upgrade the tower at coordinates\n"
+              << "  sell <x> <y> - Sell the tower at coordinates\n"
               << "  wave - Start the next wave\n"
               << "  tick <n> - Advance the game by n ticks (default 1)\n"
               << "  quit - Exit the program\n";
@@ -73,6 +75,32 @@ int main(int argc, char* argv[]) {
                     std::cout << "Placed " << type << " tower at (" << x << ", " << y << ")\n";
                 } catch (const std::exception& ex) {
                     std::cout << "Failed to place tower: " << ex.what() << '\n';
+                }
+            } else if (command == "upgrade") {
+                std::size_t x{};
+                std::size_t y{};
+                if (!(input >> x >> y)) {
+                    std::cout << "Invalid arguments. Usage: upgrade <x> <y>\n";
+                    continue;
+                }
+                try {
+                    game.upgrade_tower(GridPosition{x, y});
+                    std::cout << "Tower at (" << x << ", " << y << ") upgraded.\n";
+                } catch (const std::exception& ex) {
+                    std::cout << "Failed to upgrade tower: " << ex.what() << '\n';
+                }
+            } else if (command == "sell") {
+                std::size_t x{};
+                std::size_t y{};
+                if (!(input >> x >> y)) {
+                    std::cout << "Invalid arguments. Usage: sell <x> <y>\n";
+                    continue;
+                }
+                try {
+                    const auto refund = game.sell_tower(GridPosition{x, y});
+                    std::cout << "Sold tower at (" << x << ", " << y << ") for " << refund.to_string() << '\n';
+                } catch (const std::exception& ex) {
+                    std::cout << "Failed to sell tower: " << ex.what() << '\n';
                 }
             } else if (command == "wave") {
                 game.prepare_wave(create_default_wave());

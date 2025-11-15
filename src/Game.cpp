@@ -1,6 +1,7 @@
 #include "towerdefense/Game.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
@@ -53,6 +54,35 @@ void Game::place_tower(const std::string& type, const GridPosition& position) {
     map_.set(position, TileType::Tower);
     towers_.push_back(std::move(tower));
     path_finder_.invalidate_cache();
+}
+
+void Game::upgrade_tower(const GridPosition& position) {
+    auto index = tower_index(position);
+    if (!index) {
+        throw std::runtime_error("No tower at the specified position to upgrade");
+    }
+    auto& tower = towers_.at(*index);
+    if (!tower->next_level()) {
+        throw std::runtime_error("Tower is already at maximum level");
+    }
+    const auto upgrade_cost = tower->next_level()->upgrade_cost;
+    if (!materials_.consume_if_possible(upgrade_cost)) {
+        throw std::runtime_error("Insufficient materials for upgrade");
+    }
+    tower->upgrade();
+}
+
+Materials Game::sell_tower(const GridPosition& position) {
+    auto index = tower_index(position);
+    if (!index) {
+        throw std::runtime_error("No tower at the specified position to sell");
+    }
+    const auto refund = towers_.at(*index)->sell_value();
+    materials_.add(refund);
+    map_.set(position, TileType::Empty);
+    towers_.erase(towers_.begin() + static_cast<std::ptrdiff_t>(*index));
+    path_finder_.invalidate_cache();
+    return refund;
 }
 
 void Game::prepare_wave(Wave wave) {
@@ -125,18 +155,7 @@ void Game::towers_attack() {
         if (!tower->can_attack()) {
             continue;
         }
-        Creature* target = nullptr;
-        for (auto& creature : creatures_) {
-            if (!creature.is_alive() || creature.has_exited()) {
-                continue;
-            }
-            if (distance(tower->position(), creature.position()) <= tower->range()) {
-                target = &creature;
-                break;
-            }
-        }
-        if (target != nullptr) {
-            tower->attack(*target);
+        if (tower->attack(creatures_)) {
             tower->reset_cooldown();
         }
     }
@@ -210,6 +229,29 @@ void Game::render(std::ostream& os) const {
         os << line << '\n';
     }
     os << "Active creatures: " << creatures_.size() << '\n';
+}
+
+Tower* Game::tower_at(const GridPosition& position) {
+    if (auto index = tower_index(position)) {
+        return towers_[*index].get();
+    }
+    return nullptr;
+}
+
+const Tower* Game::tower_at(const GridPosition& position) const {
+    if (auto index = tower_index(position)) {
+        return towers_[*index].get();
+    }
+    return nullptr;
+}
+
+std::optional<std::size_t> Game::tower_index(const GridPosition& position) const {
+    for (std::size_t i = 0; i < towers_.size(); ++i) {
+        if (towers_[i] && towers_[i]->position() == position) {
+            return i;
+        }
+    }
+    return std::nullopt;
 }
 
 } // namespace towerdefense

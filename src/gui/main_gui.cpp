@@ -7,8 +7,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -83,18 +85,54 @@ std::string tile_name(TileType tile) {
 }
 
 struct TowerOption {
-    std::string id;
-    std::string label;
-    sf::Color color;
+    const TowerArchetype* archetype{};
+    sf::Color color{120, 120, 120};
 };
 
-const Tower* find_tower_at(const Game& game, const GridPosition& pos) {
-    for (const auto& tower : game.towers()) {
-        if (tower && tower->position() == pos) {
-            return tower.get();
+sf::Color archetype_color(const TowerArchetype& archetype) {
+    return sf::Color(
+        static_cast<sf::Uint8>(archetype.hud_color[0]),
+        static_cast<sf::Uint8>(archetype.hud_color[1]),
+        static_cast<sf::Uint8>(archetype.hud_color[2]));
+}
+
+const TowerOption* find_option(const std::vector<TowerOption>& options, const std::string& id) {
+    for (const auto& option : options) {
+        if (option.archetype && option.archetype->id == id) {
+            return &option;
         }
     }
     return nullptr;
+}
+
+std::string format_level_stats(const TowerLevel& level) {
+    std::ostringstream oss;
+    oss << "Damage " << level.damage << ", Range " << std::fixed << std::setprecision(1) << level.range
+        << ", Rate " << level.fire_rate_ticks << "t";
+    return oss.str();
+}
+
+std::string format_upgrade_delta(const TowerLevel& current, const TowerLevel& next) {
+    std::ostringstream oss;
+    const int damage_delta = next.damage - current.damage;
+    const double range_delta = next.range - current.range;
+    const int rate_delta = next.fire_rate_ticks - current.fire_rate_ticks;
+    oss << "Next: ";
+    if (damage_delta != 0) {
+        oss << (damage_delta > 0 ? "+" : "") << damage_delta << " dmg ";
+    }
+    if (std::abs(range_delta) > 0.01) {
+        oss << (range_delta > 0 ? "+" : "") << std::fixed << std::setprecision(1) << range_delta << " range ";
+    }
+    if (rate_delta != 0) {
+        oss << (rate_delta < 0 ? "faster " : "slower ") << std::abs(rate_delta) << "t ";
+    }
+    oss << "Cost " << next.upgrade_cost.to_string();
+    return oss.str();
+}
+
+const Tower* find_tower_at(const Game& game, const GridPosition& pos) {
+    return game.tower_at(pos);
 }
 
 const Creature* find_creature_at(const Game& game, const GridPosition& pos) {
@@ -110,10 +148,10 @@ const Creature* find_creature_at(const Game& game, const GridPosition& pos) {
 }
 
 void draw_button(sf::RenderWindow& window, const sf::Font& font, const sf::FloatRect& bounds, const std::string& label,
-    bool enabled, bool toggled = false) {
+    bool enabled, bool toggled = false, sf::Color accent = sf::Color(70, 130, 180)) {
     sf::RectangleShape shape({bounds.width, bounds.height});
     shape.setPosition(bounds.left, bounds.top);
-    const sf::Color base_color = toggled ? sf::Color(70, 130, 180) : sf::Color(55, 60, 80);
+    const sf::Color base_color = toggled ? accent : sf::Color(55, 60, 80);
     shape.setFillColor(enabled ? base_color : sf::Color(70, 70, 70));
     shape.setOutlineThickness(1.f);
     shape.setOutlineColor(sf::Color(230, 230, 230));
@@ -145,7 +183,7 @@ int main(int argc, char* argv[]) {
         const float tile_size = 48.f;
         const float margin = 24.f;
         const float top_panel_height = 110.f;
-        const float bottom_panel_height = 130.f;
+        const float bottom_panel_height = 160.f;
         const float map_width_px = static_cast<float>(map.width()) * tile_size;
         const float map_height_px = static_cast<float>(map.height()) * tile_size;
         const unsigned window_width = static_cast<unsigned>(std::max(map_width_px + margin * 2, 1000.f));
@@ -157,11 +195,15 @@ int main(int argc, char* argv[]) {
 
         sf::Font font = load_font();
 
-        const std::vector<TowerOption> tower_options{
-            {"cannon", "Cannon", sf::Color(230, 150, 70)},
-            {"frost", "Frost", sf::Color(120, 200, 255)},
-        };
-        std::string selected_tower = tower_options.front().id;
+        std::vector<TowerOption> tower_options;
+        tower_options.reserve(TowerFactory::archetypes().size());
+        for (const auto& archetype : TowerFactory::archetypes()) {
+            tower_options.push_back(TowerOption{&archetype, archetype_color(archetype)});
+        }
+        if (tower_options.empty()) {
+            throw std::runtime_error("No tower archetypes available. Check data/towers.cfg");
+        }
+        std::string selected_tower = tower_options.front().archetype->id;
 
         bool auto_tick = false;
         sf::Clock auto_tick_clock;
@@ -184,8 +226,9 @@ int main(int argc, char* argv[]) {
                     const sf::FloatRect tick_button_bounds{margin + 160.f, 20.f, 160.f, 40.f};
                     const sf::FloatRect auto_button_bounds{margin + 330.f, 20.f, 170.f, 40.f};
 
-                    const float tower_button_width = 140.f;
-                    const sf::FloatRect tower_panel_bounds{window_width - margin - tower_button_width, 20.f, tower_button_width, 40.f * static_cast<float>(tower_options.size())};
+                    const float tower_button_width = 180.f;
+                    const float tower_button_height = 68.f;
+                    const sf::FloatRect tower_panel_bounds{window_width - margin - tower_button_width, 20.f, tower_button_width, tower_button_height * static_cast<float>(tower_options.size())};
 
                     bool handled = false;
                     if (wave_button_bounds.contains(mouse_pos)) {
@@ -201,11 +244,12 @@ int main(int argc, char* argv[]) {
                         set_status(auto_tick ? "Auto-Tick enabled." : "Auto-Tick paused.", sf::Color(200, 200, 255), status_text, status_color, status_clock);
                         handled = true;
                     } else if (tower_panel_bounds.contains(mouse_pos)) {
-                        const std::size_t index = static_cast<std::size_t>((mouse_pos.y - tower_panel_bounds.top) / 40.f);
+                        const std::size_t index = static_cast<std::size_t>((mouse_pos.y - tower_panel_bounds.top) / tower_button_height);
                         if (index < tower_options.size()) {
-                            selected_tower = tower_options[index].id;
+                            selected_tower = tower_options[index].archetype->id;
                             std::ostringstream oss;
-                            oss << "Selected " << tower_options[index].label << " tower.";
+                            const auto& level = tower_options[index].archetype->levels.front();
+                            oss << "Selected " << tower_options[index].archetype->name << " (cost " << level.build_cost.to_string() << ").";
                             set_status(oss.str(), sf::Color(230, 230, 230), status_text, status_color, status_clock);
                             handled = true;
                         }
@@ -218,15 +262,54 @@ int main(int argc, char* argv[]) {
                             const std::size_t grid_x = static_cast<std::size_t>(local_x / tile_size);
                             const std::size_t grid_y = static_cast<std::size_t>(local_y / tile_size);
                             if (grid_x < map.width() && grid_y < map.height()) {
+                                const GridPosition target{grid_x, grid_y};
+                                const auto tile = map.at(target);
                                 try {
-                                    game.place_tower(selected_tower, GridPosition{grid_x, grid_y});
-                                    std::ostringstream oss;
-                                    oss << "Placed a " << selected_tower << " tower at (" << grid_x << ", " << grid_y << ").";
-                                    set_status(oss.str(), sf::Color(180, 230, 180), status_text, status_color, status_clock);
+                                    if (tile == TileType::Empty) {
+                                        game.place_tower(selected_tower, target);
+                                        std::ostringstream oss;
+                                        oss << "Placed a " << selected_tower << " tower at (" << grid_x << ", " << grid_y << ").";
+                                        set_status(oss.str(), sf::Color(180, 230, 180), status_text, status_color, status_clock);
+                                    } else if (tile == TileType::Tower) {
+                                        game.upgrade_tower(target);
+                                        if (const auto* upgraded = game.tower_at(target)) {
+                                            std::ostringstream oss;
+                                            oss << upgraded->name() << " upgraded to level " << (upgraded->level_index() + 1) << ".";
+                                            set_status(oss.str(), sf::Color(200, 200, 255), status_text, status_color, status_clock);
+                                        }
+                                    } else {
+                                        std::ostringstream oss;
+                                        oss << "Cannot build on " << tile_name(tile) << " tiles.";
+                                        set_status(oss.str(), sf::Color(255, 200, 150), status_text, status_color, status_clock);
+                                    }
                                 } catch (const std::exception& ex) {
                                     set_status(ex.what(), sf::Color(255, 140, 140), status_text, status_color, status_clock);
                                 }
                             }
+                        }
+                    }
+                }
+            } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right) {
+                const sf::Vector2f mouse_pos = window.mapPixelToCoords(sf::Vector2i(event.mouseButton.x, event.mouseButton.y));
+                const float local_x = mouse_pos.x - map_origin.x;
+                const float local_y = mouse_pos.y - map_origin.y;
+                if (local_x >= 0 && local_y >= 0) {
+                    const std::size_t grid_x = static_cast<std::size_t>(local_x / tile_size);
+                    const std::size_t grid_y = static_cast<std::size_t>(local_y / tile_size);
+                    if (grid_x < map.width() && grid_y < map.height()) {
+                        const GridPosition target{grid_x, grid_y};
+                        const auto tile = map.at(target);
+                        if (tile != TileType::Tower) {
+                            set_status("No tower to sell here.", sf::Color(230, 230, 230), status_text, status_color, status_clock);
+                            continue;
+                        }
+                        try {
+                            const auto refund = game.sell_tower(target);
+                            std::ostringstream oss;
+                            oss << "Sold tower for " << refund.to_string() << ".";
+                            set_status(oss.str(), sf::Color(180, 230, 180), status_text, status_color, status_clock);
+                        } catch (const std::exception& ex) {
+                            set_status(ex.what(), sf::Color(255, 140, 140), status_text, status_color, status_clock);
                         }
                     }
                 }
@@ -259,12 +342,15 @@ int main(int argc, char* argv[]) {
             draw_button(window, font, auto_button_bounds, "Auto-Tick", !game.is_over(), auto_tick);
 
             // Tower selection panel
-            const float tower_button_width = 140.f;
-            const sf::FloatRect tower_panel_bounds{window_width - margin - tower_button_width, 20.f, tower_button_width, 40.f * static_cast<float>(tower_options.size())};
+            const float tower_button_width = 180.f;
+            const float tower_button_height = 68.f;
+            const sf::FloatRect tower_panel_bounds{window_width - margin - tower_button_width, 20.f, tower_button_width, tower_button_height * static_cast<float>(tower_options.size())};
             for (std::size_t i = 0; i < tower_options.size(); ++i) {
-                const sf::FloatRect bounds{tower_panel_bounds.left, tower_panel_bounds.top + static_cast<float>(i) * 40.f, tower_button_width, 36.f};
-                const bool is_selected = tower_options[i].id == selected_tower;
-                draw_button(window, font, bounds, tower_options[i].label, true, is_selected);
+                const sf::FloatRect bounds{tower_panel_bounds.left, tower_panel_bounds.top + static_cast<float>(i) * tower_button_height, tower_button_width, tower_button_height - 6.f};
+                const bool is_selected = tower_options[i].archetype->id == selected_tower;
+                std::ostringstream label;
+                label << tower_options[i].archetype->name << "\n" << tower_options[i].archetype->levels.front().build_cost.to_string();
+                draw_button(window, font, bounds, label.str(), true, is_selected, tower_options[i].color);
             }
 
             // Map background
@@ -299,7 +385,13 @@ int main(int argc, char* argv[]) {
                 const auto& pos = tower->position();
                 sf::RectangleShape tower_shape({tile_size - 10.f, tile_size - 10.f});
                 tower_shape.setPosition(map_origin.x + static_cast<float>(pos.x) * tile_size + 5.f, map_origin.y + static_cast<float>(pos.y) * tile_size + 5.f);
-                sf::Color color = (tower->name() == "Frost") ? sf::Color(120, 200, 255) : sf::Color(220, 150, 90);
+                sf::Color color = sf::Color(220, 150, 90);
+                try {
+                    const auto& archetype = TowerFactory::archetype(tower->id());
+                    color = archetype_color(archetype);
+                } catch (const std::exception&) {
+                    // Fallback to default color if archetype lookup fails.
+                }
                 tower_shape.setFillColor(color);
                 tower_shape.setOutlineColor(sf::Color::Black);
                 tower_shape.setOutlineThickness(1.f);
@@ -347,6 +439,22 @@ int main(int argc, char* argv[]) {
                 window.draw(status);
             }
 
+            if (const auto* selected_option = find_option(tower_options, selected_tower)) {
+                const auto& archetype = *selected_option->archetype;
+                const auto& base_level = archetype.levels.front();
+                std::ostringstream info;
+                info << archetype.name << " - Build " << base_level.build_cost.to_string() << '\n';
+                info << format_level_stats(base_level) << '\n';
+                info << archetype.projectile_behavior;
+                if (archetype.levels.size() > 1) {
+                    info << '\n' << format_upgrade_delta(base_level, archetype.levels[1]);
+                }
+                sf::Text selection_text(info.str(), font, 15);
+                selection_text.setFillColor(sf::Color(210, 210, 210));
+                selection_text.setPosition(window_width - margin - 360.f, static_cast<float>(window_height) - bottom_panel_height + 15.f);
+                window.draw(selection_text);
+            }
+
             // Game info panel
             std::ostringstream info;
             info << "Resources: " << game.resource_units() << '\n';
@@ -365,7 +473,13 @@ int main(int argc, char* argv[]) {
                 const auto tile = map.at(hovered_tile);
                 tile_info << "Tile (" << hovered_tile.x << ", " << hovered_tile.y << ") - " << tile_name(tile);
                 if (const auto* tower = find_tower_at(game, hovered_tile)) {
-                    tile_info << ", Tower: " << tower->name();
+                    tile_info << ", Tower: " << tower->name() << " L" << (tower->level_index() + 1) << " (" << tower->level().label << ")";
+                    tile_info << " [" << format_level_stats(tower->level()) << "]";
+                    if (const auto* next = tower->next_level()) {
+                        tile_info << " | Next " << next->upgrade_cost.to_string();
+                    } else {
+                        tile_info << " | Max";
+                    }
                 }
                 if (const auto* creature = find_creature_at(game, hovered_tile)) {
                     tile_info << ", Creature: " << creature->name() << " (HP: " << creature->health() << ")";
@@ -375,13 +489,13 @@ int main(int argc, char* argv[]) {
             }
             sf::Text tile_text(tile_info.str(), font, 16);
             tile_text.setFillColor(sf::Color(200, 200, 200));
-            tile_text.setPosition(margin, static_cast<float>(window_height) - bottom_panel_height + 60.f);
+            tile_text.setPosition(margin, static_cast<float>(window_height) - bottom_panel_height + 80.f);
             window.draw(tile_text);
 
             // Instructions
-            sf::Text instructions("Controls: Queue Wave, run Tick, toggle Auto-Tick, select a tower, then click the map to build. \nPress ESC or close the window to exit.", font, 14);
+            sf::Text instructions("Controls: Queue wave, Tick, toggle Auto-Tick. Left-click empty tiles to build, left-click towers to upgrade, right-click towers to sell.\nPress ESC or close the window to exit.", font, 14);
             instructions.setFillColor(sf::Color(150, 150, 150));
-            instructions.setPosition(margin, static_cast<float>(window_height) - bottom_panel_height + 90.f);
+            instructions.setPosition(margin, static_cast<float>(window_height) - bottom_panel_height + 120.f);
             window.draw(instructions);
 
             if (game.is_over()) {

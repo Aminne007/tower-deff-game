@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "towerdefense/TowerFactory.hpp"
+#include "towerdefense/WaveManager.hpp"
 
 #include <algorithm>
 #include <array>
@@ -135,8 +136,15 @@ void GameplayState::rebuild_layout() {
 void GameplayState::handle_click(const sf::Vector2f& pos) {
     if (queue_button_.contains(pos)) {
         try {
-            session_.queue_wave(build_default_wave());
-            set_status("Wave queued.");
+            if (const auto* definition = session_.queue_next_scripted_wave()) {
+                std::string summary = definition->summary();
+                if (summary.empty()) {
+                    summary = "Enemies approaching.";
+                }
+                set_status("Queued wave '" + definition->name + "' - " + summary);
+            } else {
+                set_status("No additional scripted waves remain.");
+            }
         } catch (const std::exception& ex) {
             set_status(ex.what());
         }
@@ -284,6 +292,27 @@ void GameplayState::draw_panels(sf::RenderTarget& target) {
         sf::Text resources("Resources left: " + std::to_string(game->resource_units()), font_, 20);
         resources.setPosition(40.f, 150.f);
         target.draw(resources);
+
+        if (auto preview = session_.preview_scripted_wave()) {
+            std::ostringstream wave_info;
+            wave_info << "Next Wave: " << preview->name << " (" << preview->total_creatures() << " enemies)\n";
+            const std::string summary = preview->summary();
+            if (!summary.empty()) {
+                wave_info << "Enemies: " << summary << "\n";
+            }
+            wave_info << std::fixed << std::setprecision(1);
+            wave_info << "Rewards: x" << preview->reward_multiplier << " base";
+
+            sf::Text preview_text(wave_info.str(), font_, 16);
+            preview_text.setPosition(210.f, 100.f);
+            preview_text.setFillColor(sf::Color(230, 230, 230));
+            target.draw(preview_text);
+        } else {
+            sf::Text preview_text("No scripted waves remaining.", font_, 16);
+            preview_text.setPosition(210.f, 100.f);
+            preview_text.setFillColor(sf::Color(230, 230, 230));
+            target.draw(preview_text);
+        }
     }
 
     if (!status_.empty()) {
@@ -296,13 +325,6 @@ void GameplayState::draw_panels(sf::RenderTarget& target) {
 void GameplayState::set_status(std::string message) {
     status_ = std::move(message);
     status_timer_ = sf::Time::Zero;
-}
-
-towerdefense::Wave GameplayState::build_default_wave() const {
-    towerdefense::Wave wave{2};
-    wave.add_creature(towerdefense::Creature{"Goblin", 5, 1.0, towerdefense::Materials{1, 0, 0}});
-    wave.add_creature(towerdefense::Creature{"Orc", 10, 0.8, towerdefense::Materials{0, 1, 0}});
-    return wave;
 }
 
 void GameplayState::build_tower_options() {

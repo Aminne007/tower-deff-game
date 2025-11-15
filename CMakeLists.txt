@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 project(TowerDefenseGame VERSION 0.1 LANGUAGES CXX)
 
-# Tell CMake where SFML is installed
-set(CMAKE_PREFIX_PATH "C:/libs/sfml-2.6.2-install")
+# Cache variables to help users point CMake to their SFML installation when
+# it is not discoverable through the default search paths.
+set(SFML_DIR "" CACHE PATH "Directory containing SFMLConfig.cmake (optional)")
+if(WIN32)
+    set(SFML_RUNTIME_DIR "" CACHE PATH "Directory containing SFML runtime DLLs")
+endif()
 
 find_package(SFML 2.6 COMPONENTS system window graphics audio REQUIRED)
 
@@ -69,15 +73,28 @@ target_include_directories(tower-defense-gui
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-# Copy SFML DLLs + data/ folder next to the GUI exe after build
+# Copy the data folder next to the GUI executable after build for easy access to
+# bundled assets.
 add_custom_command(TARGET tower-defense-gui POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "C:/libs/sfml-2.6.2-install/bin"
-            $<TARGET_FILE_DIR:tower-defense-gui>
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/data
             $<TARGET_FILE_DIR:tower-defense-gui>/data
 )
+
+if(WIN32)
+    if(SFML_RUNTIME_DIR)
+        # Copy SFML runtime DLLs so the executable can run without additional
+        # PATH modifications on Windows.
+        add_custom_command(TARGET tower-defense-gui POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    ${SFML_RUNTIME_DIR}
+                    $<TARGET_FILE_DIR:tower-defense-gui>
+        )
+        install(DIRECTORY ${SFML_RUNTIME_DIR}/ DESTINATION bin OPTIONAL)
+    else()
+        message(STATUS "SFML_RUNTIME_DIR not set; skipping SFML DLL copy step.")
+    endif()
+endif()
 
 # Install targets
 install(TARGETS tower-defense-cli tower-defense-gui towerdefense

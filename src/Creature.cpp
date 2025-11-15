@@ -5,12 +5,18 @@
 
 namespace towerdefense {
 
-Creature::Creature(std::string name, int max_health, double speed, Materials reward)
+Creature::Creature(std::string name, int max_health, double speed, Materials reward, int armor, int shield, bool flying,
+    std::vector<std::string> behaviors)
     : name_(std::move(name))
     , max_health_(max_health)
     , health_(max_health)
     , speed_(speed)
-    , reward_(std::move(reward)) {
+    , reward_(std::move(reward))
+    , armor_(std::max(0, armor))
+    , max_shield_(std::max(0, shield))
+    , shield_health_(std::max(0, shield))
+    , flying_(flying)
+    , behaviors_(std::move(behaviors)) {
     if (max_health <= 0) {
         throw std::invalid_argument("Creature must have positive health");
     }
@@ -46,7 +52,23 @@ void Creature::start_returning(std::vector<GridPosition> path) {
 }
 
 void Creature::apply_damage(int amount) {
-    health_ = std::max(0, health_ - amount);
+    if (amount <= 0 || !is_alive()) {
+        return;
+    }
+
+    int remaining = amount;
+    if (shield_health_ > 0) {
+        const int absorbed = std::min(shield_health_, remaining);
+        shield_health_ -= absorbed;
+        remaining -= absorbed;
+    }
+
+    if (remaining <= 0) {
+        return;
+    }
+
+    const int mitigated = std::max(1, remaining - armor_);
+    health_ = std::max(0, health_ - mitigated);
 }
 
 void Creature::apply_slow(double factor, int duration) {

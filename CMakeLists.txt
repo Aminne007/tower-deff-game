@@ -19,6 +19,7 @@ add_library(towerdefense
     src/Tower.cpp
     src/TowerFactory.cpp
     src/Wave.cpp
+    src/WaveManager.cpp
     src/GridPosition.cpp
     src/Materials.cpp
 )

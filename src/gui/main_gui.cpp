@@ -1,7 +1,7 @@
 #include "towerdefense/Game.hpp"
 #include "towerdefense/Map.hpp"
 #include "towerdefense/TowerFactory.hpp"
-#include "towerdefense/Wave.hpp"
+#include "towerdefense/WaveManager.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -18,14 +18,6 @@
 using namespace towerdefense;
 
 namespace {
-
-Wave create_default_wave() {
-    Wave wave{2};
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Orc", 10, 0.8, Materials{0, 1, 0}});
-    return wave;
-}
 
 sf::Font load_font() {
     sf::Font font;
@@ -140,6 +132,7 @@ int main(int argc, char* argv[]) {
         const std::filesystem::path map_path = (argc > 1) ? std::filesystem::path{argv[1]} : std::filesystem::path{"data"} / "default_map.txt";
         Map initial_map = Map::load_from_file(map_path.string());
         Game game{initial_map, Materials{34, 34, 34}, 10};
+        WaveManager wave_manager{std::filesystem::path{"data"} / "waves", map_path.stem().string()};
         const Map& map = game.map();
 
         const float tile_size = 48.f;
@@ -189,8 +182,13 @@ int main(int argc, char* argv[]) {
 
                     bool handled = false;
                     if (wave_button_bounds.contains(mouse_pos)) {
-                        game.prepare_wave(create_default_wave());
-                        set_status("Wave queued. Press Tick or enable Auto-Tick to defend!", sf::Color(180, 230, 180), status_text, status_color, status_clock);
+                        if (const WaveDefinition* def = wave_manager.queue_next_wave(game)) {
+                            std::ostringstream oss;
+                            oss << "Queued wave '" << def->name << "' with " << def->total_creatures() << " foes.";
+                            set_status(oss.str(), sf::Color(180, 230, 180), status_text, status_color, status_clock);
+                        } else {
+                            set_status("No more waves queued for this map.", sf::Color(255, 180, 120), status_text, status_color, status_clock);
+                        }
                         handled = true;
                     } else if (tick_button_bounds.contains(mouse_pos)) {
                         game.tick();
@@ -359,6 +357,8 @@ int main(int argc, char* argv[]) {
             info_text.setFillColor(sf::Color(230, 230, 230));
             window.draw(info_text);
 
+            const auto upcoming = wave_manager.upcoming_waves(3);
+
             // Tile info
             std::ostringstream tile_info;
             if (has_hovered_tile) {
@@ -368,7 +368,12 @@ int main(int argc, char* argv[]) {
                     tile_info << ", Tower: " << tower->name();
                 }
                 if (const auto* creature = find_creature_at(game, hovered_tile)) {
-                    tile_info << ", Creature: " << creature->name() << " (HP: " << creature->health() << ")";
+                    tile_info << ", Creature: " << creature->name() << " (HP: " << creature->health() << ", Armor: "
+                              << creature->armor() << ", Shield: " << creature->shield();
+                    if (creature->is_flying()) {
+                        tile_info << ", Flying";
+                    }
+                    tile_info << ")";
                 }
             } else {
                 tile_info << "Hover tiles to inspect them.";
@@ -379,10 +384,26 @@ int main(int argc, char* argv[]) {
             window.draw(tile_text);
 
             // Instructions
+            std::ostringstream wave_panel;
+            if (!upcoming.empty()) {
+                wave_panel << "Upcoming waves:";
+                for (std::size_t i = 0; i < upcoming.size(); ++i) {
+                    wave_panel << "\n" << (i == 0 ? "Next" : "Later") << ": " << upcoming[i].name << " - " << upcoming[i].summary();
+                }
+            } else {
+                wave_panel << "All configured waves cleared.";
+            }
+
             sf::Text instructions("Controls: Queue Wave, run Tick, toggle Auto-Tick, select a tower, then click the map to build. \nPress ESC or close the window to exit.", font, 14);
             instructions.setFillColor(sf::Color(150, 150, 150));
             instructions.setPosition(margin, static_cast<float>(window_height) - bottom_panel_height + 90.f);
             window.draw(instructions);
+
+            sf::Text wave_preview(wave_panel.str(), font, 14);
+            wave_preview.setFillColor(sf::Color(200, 200, 200));
+            wave_preview.setPosition(window_width - margin - 360.f, static_cast<float>(window_height) - bottom_panel_height + 20.f);
+            wave_preview.setScale(0.95f, 0.95f);
+            window.draw(wave_preview);
 
             if (game.is_over()) {
                 auto_tick = false;

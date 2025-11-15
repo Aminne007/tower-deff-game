@@ -28,6 +28,8 @@ public:
     [[nodiscard]] int resource_units() const noexcept { return resource_units_; }
     [[nodiscard]] int current_wave_index() const noexcept { return static_cast<int>(wave_index_); }
     [[nodiscard]] bool is_over() const noexcept { return resource_units_ <= 0 && creatures_.empty() && pending_waves_.empty(); }
+    [[nodiscard]] const std::vector<TowerPtr>& towers() const noexcept { return towers_; }
+    [[nodiscard]] const std::vector<Creature>& creatures() const noexcept { return creatures_; }
 
     void render(std::ostream& os) const;
 

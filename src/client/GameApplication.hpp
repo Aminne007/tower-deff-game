@@ -7,6 +7,7 @@
 #include "client/states/MainMenuState.hpp"
 #include "client/states/PauseState.hpp"
 #include "client/states/SummaryState.hpp"
+#include "towerdefense/RandomMapGenerator.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -36,7 +37,7 @@ private:
     void switch_to_main_menu();
     void switch_to_level_select();
     void switch_to_gameplay(const std::filesystem::path& level_path);
-    void switch_to_random_gameplay();
+    void switch_to_random_gameplay(towerdefense::RandomMapGenerator::Preset preset);
     void switch_to_summary(const std::string& message);
 
     void discover_levels();

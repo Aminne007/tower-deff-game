@@ -1,5 +1,6 @@
 #include "towerdefense/Game.hpp"
 #include "towerdefense/Map.hpp"
+#include "towerdefense/RandomMapGenerator.hpp"
 #include "towerdefense/TowerFactory.hpp"
 #include "towerdefense/WaveManager.hpp"
 
@@ -7,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <string_view>
 
 using namespace towerdefense;
 
@@ -28,18 +30,44 @@ void print_help() {
               << "  sell <x> <y> - Sell the tower at coordinates\n"
               << "  wave - Start the next wave\n"
               << "  tick <n> - Advance the game by n ticks (default 1)\n"
-              << "  quit - Exit the program\n";
+              << "  quit - Exit the program\n"
+              << "\nLaunch the CLI with '--random <simple|maze|multi>' to try a generated map.\n";
 }
 
 int main(int argc, char* argv[]) {
     try {
-        const std::filesystem::path map_path = (argc > 1) ? std::filesystem::path{argv[1]} : std::filesystem::path{"data"} / "default_map.txt";
-        Map map = Map::load_from_file(map_path.string());
+        Map map;
+        std::filesystem::path map_path;
+        bool using_random_map = false;
+        towerdefense::RandomMapGenerator::Preset preset = towerdefense::RandomMapGenerator::Preset::Simple;
+
+        if (argc > 1 && std::string_view(argv[1]) == "--random") {
+            using_random_map = true;
+            if (argc > 2) {
+                if (auto parsed = towerdefense::RandomMapGenerator::from_string(argv[2])) {
+                    preset = *parsed;
+                } else {
+                    std::cout << "Unknown random preset '" << argv[2] << "'. Using simple instead.\n";
+                }
+            }
+            towerdefense::RandomMapGenerator generator;
+            map = Map::from_lines(generator.generate(preset));
+            map_path = std::filesystem::path{"random"} / std::string(towerdefense::RandomMapGenerator::to_string(preset));
+        } else {
+            map_path = (argc > 1) ? std::filesystem::path{argv[1]} : std::filesystem::path{"data"} / "default_map.txt";
+            map = Map::load_from_file(map_path.string());
+        }
+
         Game game{map, Materials{34, 34, 34}, 10};
-        WaveManager wave_manager{std::filesystem::path{"data"} / "waves", map_path.stem().string()};
+        const std::string map_identifier = using_random_map ? std::string{"default_map"} : map_path.stem().string();
+        WaveManager wave_manager{std::filesystem::path{"data"} / "waves", map_identifier};
 
         std::cout << "Tower Defense CLI" << std::endl;
-        std::cout << "Loaded map: " << map_path << '\n';
+        if (using_random_map) {
+            std::cout << "Loaded random map using the '" << towerdefense::RandomMapGenerator::to_string(preset) << "' preset.\n";
+        } else {
+            std::cout << "Loaded map: " << map_path << '\n';
+        }
         print_help();
 
         bool running = true;

@@ -2,6 +2,7 @@
 
 #include "towerdefense/Game.hpp"
 #include "towerdefense/Map.hpp"
+#include "towerdefense/RandomMapGenerator.hpp"
 #include "towerdefense/Wave.hpp"
 #include "towerdefense/WaveManager.hpp"
 
@@ -17,7 +18,7 @@ public:
     SimulationSession();
 
     void load_level(const std::filesystem::path& level_path);
-    void load_random_level();
+    void load_random_level(towerdefense::RandomMapGenerator::Preset preset);
     void unload();
 
     bool has_game() const;
@@ -40,6 +41,7 @@ private:
     towerdefense::Materials initial_resources_;
     int max_waves_;
     std::optional<towerdefense::WaveManager> wave_manager_;
+    towerdefense::RandomMapGenerator map_generator_;
 };
 
 } // namespace client

@@ -226,7 +226,7 @@ void GameApplication::process_game_event(const GameEvent& event) {
         }
         break;
     case GameEvent::Type::RandomLevel:
-        switch_to_random_gameplay();
+        switch_to_random_gameplay(event.random_preset.value_or(towerdefense::RandomMapGenerator::Preset::Simple));
         break;
     case GameEvent::Type::Pause:
         if (mode_ == Mode::Gameplay && state_) {
@@ -279,9 +279,9 @@ void GameApplication::switch_to_summary(const std::string& message) {
     set_state(std::make_unique<SummaryState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize(), message), Mode::Summary);
 }
 
-void GameApplication::switch_to_random_gameplay() {
+void GameApplication::switch_to_random_gameplay(towerdefense::RandomMapGenerator::Preset preset) {
     try {
-        session_.load_random_level();
+        session_.load_random_level(preset);
         set_state(std::make_unique<GameplayState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize()), Mode::Gameplay);
     } catch (const std::exception& ex) {
         switch_to_summary(ex.what());

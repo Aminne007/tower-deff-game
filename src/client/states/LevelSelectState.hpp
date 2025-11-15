@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "towerdefense/RandomMapGenerator.hpp"
+
 namespace client {
 
 struct LevelMetadata {
@@ -24,10 +26,16 @@ public:
     void render(sf::RenderTarget& target) override;
 
 private:
+    struct RandomButton {
+        sf::FloatRect rect;
+        towerdefense::RandomMapGenerator::Preset preset;
+        std::string label;
+    };
+
     sf::Vector2u window_size_;
     std::vector<LevelMetadata> levels_;
     std::vector<sf::FloatRect> level_buttons_;
-    sf::FloatRect random_button_;
+    std::vector<RandomButton> random_buttons_;
     sf::FloatRect back_button_;
 };
 

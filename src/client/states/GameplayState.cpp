@@ -2,12 +2,23 @@
 
 #include <SFML/Graphics.hpp>
 
+#include "towerdefense/TowerFactory.hpp"
+
+#include <algorithm>
+#include <array>
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 
 namespace client {
 
 namespace {
+constexpr float kTowerPanelWidth = 180.f;
+constexpr float kTowerPanelMargin = 30.f;
+constexpr float kTowerPanelStartY = 40.f;
+constexpr float kTowerButtonSpacing = 70.f;
+constexpr float kTowerButtonHeight = 60.f;
+
 sf::Color tile_color(towerdefense::TileType tile) {
     using towerdefense::TileType;
     switch (tile) {
@@ -29,10 +40,26 @@ sf::Color tile_color(towerdefense::TileType tile) {
     return sf::Color::Black;
 }
 
-void draw_button(sf::RenderTarget& target, const sf::Font& font, const sf::FloatRect& rect, const std::string& label, bool active = false) {
+sf::Color scale_color(const sf::Color& color, float factor) {
+    const auto scale_component = [factor](sf::Uint8 component) {
+        const float scaled = std::clamp(static_cast<float>(component) * factor, 0.f, 255.f);
+        return static_cast<sf::Uint8>(scaled);
+    };
+    return sf::Color(scale_component(color.r), scale_component(color.g), scale_component(color.b));
+}
+
+sf::Color make_color(const std::array<int, 3>& rgb) {
+    const auto clamp_component = [](int value) {
+        return static_cast<sf::Uint8>(std::clamp(value, 0, 255));
+    };
+    return sf::Color(clamp_component(rgb[0]), clamp_component(rgb[1]), clamp_component(rgb[2]));
+}
+
+void draw_button(sf::RenderTarget& target, const sf::Font& font, const sf::FloatRect& rect, const std::string& label,
+    const sf::Color& base_color = sf::Color(50, 60, 80), bool active = false) {
     sf::RectangleShape box({rect.width, rect.height});
     box.setPosition(rect.left, rect.top);
-    box.setFillColor(active ? sf::Color(90, 140, 190) : sf::Color(50, 60, 80));
+    box.setFillColor(active ? base_color : scale_color(base_color, 0.6f));
     box.setOutlineThickness(1.5f);
     box.setOutlineColor(sf::Color(220, 220, 220));
     target.draw(box);
@@ -49,10 +76,11 @@ void draw_button(sf::RenderTarget& target, const sf::Font& font, const sf::Float
 GameplayState::GameplayState(SimulationSession& session, Dispatcher dispatcher, const sf::Font& font, sf::Vector2u window_size)
     : GameState(session, std::move(dispatcher), font)
     , window_size_(window_size)
-    , tower_options_{{"cannon", "Cannon", sf::Color(230, 150, 70)}, {"frost", "Frost", sf::Color(120, 200, 255)}}
+    , tower_options_{}
     , selected_tower_(0)
     , map_origin_(40.f, 140.f)
     , tile_size_(48.f) {
+    build_tower_options();
     rebuild_layout();
     status_ = "Select a tile to place a tower.";
 }
@@ -96,11 +124,11 @@ void GameplayState::rebuild_layout() {
     pause_button_ = sf::FloatRect{380.f, 40.f, button_width, 50.f};
 
     tower_buttons_.clear();
-    const float panel_width = 180.f;
-    const float start_x = static_cast<float>(window_size_.x) - panel_width - 30.f;
-    const float start_y = 40.f;
+    const float start_x = static_cast<float>(window_size_.x) - kTowerPanelWidth - kTowerPanelMargin;
+    const float start_y = kTowerPanelStartY;
     for (std::size_t i = 0; i < tower_options_.size(); ++i) {
-        tower_buttons_.push_back(sf::FloatRect{start_x, start_y + static_cast<float>(i) * 70.f, panel_width, 60.f});
+        tower_buttons_.push_back(
+            sf::FloatRect{start_x, start_y + static_cast<float>(i) * kTowerButtonSpacing, kTowerPanelWidth, kTowerButtonHeight});
     }
 }
 
@@ -123,7 +151,7 @@ void GameplayState::handle_click(const sf::Vector2f& pos) {
         emit(GameEvent::Type::Pause);
         return;
     }
-    for (std::size_t i = 0; i < tower_buttons_.size(); ++i) {
+    for (std::size_t i = 0; i < tower_buttons_.size() && i < tower_options_.size(); ++i) {
         if (tower_buttons_[i].contains(pos)) {
             selected_tower_ = i;
             set_status("Selected " + tower_options_[i].label + ".");
@@ -143,6 +171,11 @@ void GameplayState::handle_click(const sf::Vector2f& pos) {
     const auto grid_x = static_cast<std::size_t>((pos.x - map_origin_.x) / tile_size_);
     const auto grid_y = static_cast<std::size_t>((pos.y - map_origin_.y) / tile_size_);
     if (grid_x >= map.width() || grid_y >= map.height()) {
+        return;
+    }
+
+    if (tower_options_.empty()) {
+        set_status("No towers are available to place.");
         return;
     }
 
@@ -214,8 +247,26 @@ void GameplayState::draw_panels(sf::RenderTarget& target) {
     draw_button(target, font_, tick_button_, "Tick");
     draw_button(target, font_, pause_button_, "Pause");
 
-    for (std::size_t i = 0; i < tower_buttons_.size(); ++i) {
-        draw_button(target, font_, tower_buttons_[i], tower_options_[i].label, i == selected_tower_);
+    for (std::size_t i = 0; i < tower_buttons_.size() && i < tower_options_.size(); ++i) {
+        draw_button(target, font_, tower_buttons_[i], tower_options_[i].label, tower_options_[i].color, i == selected_tower_);
+    }
+
+    const float tower_panel_x = static_cast<float>(window_size_.x) - kTowerPanelWidth - kTowerPanelMargin;
+    if (!tower_options_.empty() && selected_tower_ < tower_options_.size()) {
+        const auto& option = tower_options_[selected_tower_];
+        std::ostringstream stats;
+        stats << option.label << " (" << option.id << ")\n";
+        stats << "Damage: " << option.damage << "  Range: " << std::fixed << std::setprecision(1) << option.range;
+        stats << "  Fire rate: " << option.fire_rate_ticks << " ticks\n";
+        stats << "Build cost: " << option.build_cost.to_string() << '\n';
+        if (!option.behavior.empty()) {
+            stats << option.behavior;
+        }
+
+        sf::Text stats_text(stats.str(), font_, 16);
+        stats_text.setPosition(tower_panel_x, kTowerPanelStartY + static_cast<float>(tower_options_.size()) * kTowerButtonSpacing + 10.f);
+        stats_text.setFillColor(sf::Color(230, 230, 230));
+        target.draw(stats_text);
     }
 
     if (const auto* game = session_.game()) {
@@ -252,6 +303,34 @@ towerdefense::Wave GameplayState::build_default_wave() const {
     wave.add_creature(towerdefense::Creature{"Goblin", 5, 1.0, towerdefense::Materials{1, 0, 0}});
     wave.add_creature(towerdefense::Creature{"Orc", 10, 0.8, towerdefense::Materials{0, 1, 0}});
     return wave;
+}
+
+void GameplayState::build_tower_options() {
+    tower_options_.clear();
+
+    const auto& archetypes = towerdefense::TowerFactory::archetypes();
+    tower_options_.reserve(archetypes.size());
+    for (const auto& archetype : archetypes) {
+        if (archetype.levels.empty()) {
+            continue;
+        }
+        TowerOption option;
+        option.id = archetype.id;
+        option.label = archetype.name;
+        option.color = make_color(archetype.hud_color);
+        option.damage = archetype.levels.front().damage;
+        option.range = archetype.levels.front().range;
+        option.fire_rate_ticks = archetype.levels.front().fire_rate_ticks;
+        option.build_cost = archetype.levels.front().build_cost;
+        option.behavior = archetype.projectile_behavior;
+        tower_options_.push_back(std::move(option));
+    }
+
+    if (tower_options_.empty()) {
+        selected_tower_ = 0;
+    } else {
+        selected_tower_ = std::min(selected_tower_, tower_options_.size() - 1);
+    }
 }
 
 } // namespace client

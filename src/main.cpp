@@ -1,7 +1,7 @@
 #include "towerdefense/Game.hpp"
 #include "towerdefense/Map.hpp"
 #include "towerdefense/TowerFactory.hpp"
-#include "towerdefense/Wave.hpp"
+#include "towerdefense/WaveManager.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -21,19 +21,12 @@ void print_help() {
               << "  quit - Exit the program\n";
 }
 
-Wave create_default_wave() {
-    Wave wave{2};
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Orc", 10, 0.8, Materials{0, 1, 0}});
-    return wave;
-}
-
 int main(int argc, char* argv[]) {
     try {
         const std::filesystem::path map_path = (argc > 1) ? std::filesystem::path{argv[1]} : std::filesystem::path{"data"} / "default_map.txt";
         Map map = Map::load_from_file(map_path.string());
         Game game{map, Materials{34, 34, 34}, 10};
+        WaveManager wave_manager{std::filesystem::path{"data"} / "waves", map_path.stem().string()};
 
         std::cout << "Tower Defense CLI" << std::endl;
         std::cout << "Loaded map: " << map_path << '\n';
@@ -75,8 +68,14 @@ int main(int argc, char* argv[]) {
                     std::cout << "Failed to place tower: " << ex.what() << '\n';
                 }
             } else if (command == "wave") {
-                game.prepare_wave(create_default_wave());
-                std::cout << "Wave queued. Use tick to simulate.\n";
+                if (const WaveDefinition* def = wave_manager.queue_next_wave(game)) {
+                    std::cout << "Queued wave '" << def->name << "' (" << def->total_creatures() << " enemies).\n";
+                    if (auto preview = wave_manager.preview()) {
+                        std::cout << "Next up: " << preview->name << " - " << preview->summary() << '\n';
+                    }
+                } else {
+                    std::cout << "No additional waves remain for this map.\n";
+                }
             } else if (command == "tick") {
                 int steps = 1;
                 if (!(input >> steps)) {

@@ -19,6 +19,7 @@ public:
     Map(std::size_t width, std::size_t height, Grid grid);
 
     static Map load_from_file(const std::string& path);
+    static Map from_lines(const std::vector<std::string>& lines);
 
     [[nodiscard]] std::size_t width() const noexcept { return width_; }
     [[nodiscard]] std::size_t height() const noexcept { return height_; }

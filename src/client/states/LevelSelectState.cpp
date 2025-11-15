@@ -20,12 +20,12 @@ void draw_button(sf::RenderTarget& target, const sf::Font& font, const sf::Float
 }
 
 LevelSelectState::LevelSelectState(SimulationSession& session, Dispatcher dispatcher, const sf::Font& font, sf::Vector2u window_size,
-    std::vector<std::filesystem::path> levels)
+    std::vector<LevelMetadata> levels)
     : GameState(session, std::move(dispatcher), font)
     , window_size_(window_size)
     , levels_(std::move(levels)) {
     const float width = static_cast<float>(window_size_.x);
-    const sf::Vector2f button_size{400.f, 60.f};
+    const sf::Vector2f button_size{480.f, 60.f};
     const float start_y = 160.f;
     const float gap = 20.f;
     level_buttons_.reserve(levels_.size());
@@ -33,6 +33,8 @@ LevelSelectState::LevelSelectState(SimulationSession& session, Dispatcher dispat
         level_buttons_.push_back(sf::FloatRect{width / 2.f - button_size.x / 2.f, start_y + i * (button_size.y + gap), button_size.x,
             button_size.y});
     }
+    const float random_top = start_y + static_cast<float>(levels_.size()) * (button_size.y + gap) + gap;
+    random_button_ = sf::FloatRect{width / 2.f - button_size.x / 2.f, random_top, button_size.x, button_size.y};
     back_button_ = sf::FloatRect{50.f, static_cast<float>(window_size_.y) - 80.f, 180.f, 50.f};
 }
 
@@ -43,9 +45,13 @@ void LevelSelectState::handle_event(const sf::Event& event) {
     const sf::Vector2f pos(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
     for (std::size_t i = 0; i < level_buttons_.size(); ++i) {
         if (level_buttons_[i].contains(pos)) {
-            emit(GameEvent{GameEvent::Type::LevelChosen, levels_[i]});
+            emit(GameEvent{GameEvent::Type::LevelChosen, levels_[i].path});
             return;
         }
+    }
+    if (random_button_.contains(pos)) {
+        emit(GameEvent::Type::RandomLevel);
+        return;
     }
     if (back_button_.contains(pos)) {
         emit(GameEvent::Type::Quit);
@@ -64,7 +70,7 @@ void LevelSelectState::render(sf::RenderTarget& target) {
     target.draw(title);
 
     if (levels_.empty()) {
-        sf::Text empty("No maps found in ./data", font_, 24);
+        sf::Text empty("No maps found in ./data/maps", font_, 24);
         bounds = empty.getLocalBounds();
         empty.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
         empty.setPosition(static_cast<float>(window_size_.x) / 2.f, static_cast<float>(window_size_.y) / 2.f);
@@ -72,9 +78,11 @@ void LevelSelectState::render(sf::RenderTarget& target) {
     }
 
     for (std::size_t i = 0; i < level_buttons_.size(); ++i) {
-        draw_button(target, font_, level_buttons_[i], levels_[i].filename().string());
+        const std::string label = levels_[i].name + " (" + levels_[i].difficulty + ")";
+        draw_button(target, font_, level_buttons_[i], label);
     }
 
+    draw_button(target, font_, random_button_, "Random Map");
     draw_button(target, font_, back_button_, "Back");
 }
 

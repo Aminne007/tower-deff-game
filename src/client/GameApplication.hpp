@@ -36,6 +36,7 @@ private:
     void switch_to_main_menu();
     void switch_to_level_select();
     void switch_to_gameplay(const std::filesystem::path& level_path);
+    void switch_to_random_gameplay();
     void switch_to_summary(const std::string& message);
 
     void discover_levels();
@@ -43,7 +44,7 @@ private:
     sf::RenderWindow window_;
     sf::Font font_;
     SimulationSession session_;
-    std::vector<std::filesystem::path> levels_;
+    std::vector<LevelMetadata> levels_;
     std::unique_ptr<GameState> state_;
     std::unique_ptr<GameState> suspended_state_;
     Mode mode_;

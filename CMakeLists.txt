@@ -46,9 +46,11 @@ add_executable(tower-defense-gui
     src/client/GameApplication.cpp
     src/client/SimulationSession.cpp
     src/client/states/GameState.cpp
+    src/client/states/GameOverState.cpp
     src/client/states/MainMenuState.cpp
     src/client/states/LevelSelectState.cpp
     src/client/states/GameplayState.cpp
+    src/client/states/HelpState.cpp
     src/client/states/PauseState.cpp
     src/client/states/SummaryState.cpp
 )

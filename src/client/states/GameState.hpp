@@ -20,6 +20,8 @@ struct GameEvent {
         RandomLevel,
         Pause,
         Resume,
+        Help,
+        GameOver,
         Quit,
     };
 

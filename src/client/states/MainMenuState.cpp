@@ -27,8 +27,9 @@ MainMenuState::MainMenuState(SimulationSession& session, Dispatcher dispatcher, 
     const float width = static_cast<float>(window_size_.x);
     const float height = static_cast<float>(window_size_.y);
     const sf::Vector2f button_size{300.f, 70.f};
-    play_button_ = sf::FloatRect{width / 2.f - button_size.x / 2.f, height / 2.f - 90.f, button_size.x, button_size.y};
-    quit_button_ = sf::FloatRect{width / 2.f - button_size.x / 2.f, height / 2.f + 10.f, button_size.x, button_size.y};
+    play_button_ = sf::FloatRect{width / 2.f - button_size.x / 2.f, height / 2.f - 120.f, button_size.x, button_size.y};
+    help_button_ = sf::FloatRect{width / 2.f - button_size.x / 2.f, height / 2.f - 20.f, button_size.x, button_size.y};
+    quit_button_ = sf::FloatRect{width / 2.f - button_size.x / 2.f, height / 2.f + 80.f, button_size.x, button_size.y};
 }
 
 void MainMenuState::handle_event(const sf::Event& event) {
@@ -36,6 +37,8 @@ void MainMenuState::handle_event(const sf::Event& event) {
         const sf::Vector2f pos(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
         if (play_button_.contains(pos)) {
             emit(GameEvent::Type::Play);
+        } else if (help_button_.contains(pos)) {
+            emit(GameEvent::Type::Help);
         } else if (quit_button_.contains(pos)) {
             emit(GameEvent::Type::Quit);
         }
@@ -55,6 +58,7 @@ void MainMenuState::render(sf::RenderTarget& target) {
     target.draw(title);
 
     draw_button(target, font_, play_button_, "Play");
+    draw_button(target, font_, help_button_, "Help");
     draw_button(target, font_, quit_button_, "Quit");
 }
 

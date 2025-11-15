@@ -171,7 +171,8 @@ GameApplication::GameApplication()
     : window_(sf::VideoMode(1280, 720), "Tower Defense")
     , font_(load_font())
     , mode_(Mode::MainMenu)
-    , suspended_mode_(Mode::Gameplay) {
+    , suspended_mode_(Mode::Gameplay)
+    , last_session_was_random_(false) {
     window_.setVerticalSyncEnabled(true);
     discover_levels();
     switch_to_main_menu();
@@ -198,7 +199,11 @@ int GameApplication::run() {
             if (const auto* game = session_.game()) {
                 if (game->is_over()) {
                     const bool victory = game->resource_units() > 0;
-                    switch_to_summary(victory ? "Victory!" : "Defeat.");
+                    if (victory) {
+                        switch_to_summary("Victory!");
+                    } else {
+                        process_game_event(GameEvent{GameEvent::Type::GameOver, {}, std::nullopt});
+                    }
                 }
             }
         }
@@ -241,6 +246,12 @@ void GameApplication::process_game_event(const GameEvent& event) {
             mode_ = suspended_mode_;
         }
         break;
+    case GameEvent::Type::Help:
+        switch_to_help();
+        break;
+    case GameEvent::Type::GameOver:
+        switch_to_game_over("Defeat.");
+        break;
     case GameEvent::Type::Quit:
         switch_to_main_menu();
         break;
@@ -268,6 +279,9 @@ void GameApplication::switch_to_level_select() {
 void GameApplication::switch_to_gameplay(const std::filesystem::path& level_path) {
     try {
         session_.load_level(level_path);
+        last_played_level_ = level_path;
+        last_session_was_random_ = false;
+        last_random_preset_.reset();
         set_state(std::make_unique<GameplayState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize()), Mode::Gameplay);
     } catch (const std::exception& ex) {
         switch_to_summary(ex.what());
@@ -282,10 +296,29 @@ void GameApplication::switch_to_summary(const std::string& message) {
 void GameApplication::switch_to_random_gameplay(towerdefense::RandomMapGenerator::Preset preset) {
     try {
         session_.load_random_level(preset);
+        last_played_level_.clear();
+        last_session_was_random_ = true;
+        last_random_preset_ = preset;
         set_state(std::make_unique<GameplayState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize()), Mode::Gameplay);
     } catch (const std::exception& ex) {
         switch_to_summary(ex.what());
     }
+}
+
+void GameApplication::switch_to_help() {
+    set_state(std::make_unique<HelpState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize()), Mode::Help);
+}
+
+void GameApplication::switch_to_game_over(const std::string& message) {
+    session_.unload();
+    std::filesystem::path retry_path;
+    std::optional<towerdefense::RandomMapGenerator::Preset> retry_preset;
+    if (last_session_was_random_) {
+        retry_preset = last_random_preset_;
+    } else {
+        retry_path = last_played_level_;
+    }
+    set_state(std::make_unique<GameOverState>(session_, [this](const GameEvent& ev) { process_game_event(ev); }, font_, window_.getSize(), message, retry_path, retry_preset), Mode::GameOver);
 }
 
 void GameApplication::discover_levels() {

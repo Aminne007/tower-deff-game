@@ -23,14 +23,39 @@ reports/         Directory reserved for progress reports
 
 ## Building
 
-This project uses CMake (minimum version 3.16).
+This project uses CMake (minimum version 3.16) and requires SFML 2.6 or newer
+for the graphical client. The command-line executable has no external
+dependencies beyond the standard library.
+
+### Configuring SFML
+
+`find_package(SFML ...)` will search the usual system locations. If SFML is
+installed elsewhere, point CMake to the directory that contains
+`SFMLConfig.cmake` by setting the cache variable `SFML_DIR`:
+
+```
+cmake -S . -B build -DSFML_DIR=/path/to/SFML/lib/cmake/SFML
+```
+
+Examples:
+
+- **Linux/macOS** – packages from a system manager usually install SFML into a
+  `cmake/SFML` folder under `/usr` or `/opt`. If discovery fails, use
+  `-DSFML_DIR=/usr/lib/cmake/SFML` (adjusting for your distribution).
+- **Windows** – download the official SFML SDK and pass the unpacked config
+  directory, e.g. `-DSFML_DIR="C:/libs/SFML-2.6.2/lib/cmake/SFML"`. To copy
+  the SFML DLLs next to the GUI executable automatically, also set
+  `-DSFML_RUNTIME_DIR="C:/libs/SFML-2.6.2/bin"`.
+
+### Build commands
 
 ```
 cmake -S . -B build
 cmake --build build
 ```
 
-The executable `tower-defense-cli` will be generated inside `build/`.
+The `tower-defense-cli` and `tower-defense-gui` executables will be generated
+inside `build/`.
 
 ## Running
 

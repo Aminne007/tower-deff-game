@@ -24,11 +24,29 @@ std::unordered_map<GridPosition, char, GridPositionHash> build_entity_symbols(
     return symbols;
 }
 
+std::string_view transaction_kind_label(ResourceManager::TransactionKind kind) {
+    switch (kind) {
+    case ResourceManager::TransactionKind::Income:
+        return "Income";
+    case ResourceManager::TransactionKind::Spend:
+        return "Spend";
+    case ResourceManager::TransactionKind::Refund:
+        return "Refund";
+    case ResourceManager::TransactionKind::PassiveIncome:
+        return "Passive";
+    case ResourceManager::TransactionKind::Theft:
+        return "Theft";
+    case ResourceManager::TransactionKind::Ability:
+        return "Ability";
+    }
+    return "Unknown";
+}
+
 } // namespace
 
 Game::Game(Map map, Materials starting_materials, int resource_units)
     : map_(std::move(map))
-    , materials_(std::move(starting_materials))
+    , resource_manager_(std::move(starting_materials), Materials{1, 0, 0}, 5)
     , resource_units_(resource_units)
     , path_finder_(map_) {
     if (resource_units <= 0) {
@@ -46,7 +64,7 @@ void Game::place_tower(const std::string& type, const GridPosition& position) {
     }
 
     const auto tower_cost = TowerFactory::cost(type);
-    if (!materials_.consume_if_possible(tower_cost)) {
+    if (!resource_manager_.spend(tower_cost, "Build " + type, static_cast<int>(wave_index_))) {
         throw std::runtime_error("Not enough materials to build " + type);
     }
 
@@ -86,10 +104,12 @@ Materials Game::sell_tower(const GridPosition& position) {
 }
 
 void Game::prepare_wave(Wave wave) {
-    pending_waves_.push_back(std::move(wave));
+    const bool early = !creatures_.empty();
+    pending_waves_.push_back(PendingWaveEntry{std::move(wave), early});
 }
 
 void Game::tick() {
+    resource_manager_.tick(static_cast<int>(wave_index_));
     spawn_creatures();
     towers_attack();
     move_creatures();
@@ -101,7 +121,8 @@ void Game::spawn_creatures() {
         return;
     }
 
-    auto& wave = pending_waves_.front();
+    auto& entry = pending_waves_.front();
+    auto& wave = entry.wave;
     wave.tick();
 
     while (wave.ready_to_spawn()) {
@@ -121,6 +142,8 @@ void Game::spawn_creatures() {
     }
 
     if (wave.is_empty()) {
+        resource_manager_.award_wave_income(static_cast<int>(wave_index_), !breach_since_last_income_, entry.early_call_bonus);
+        breach_since_last_income_ = false;
         pending_waves_.pop_front();
         ++wave_index_;
     }
@@ -164,7 +187,8 @@ void Game::towers_attack() {
 void Game::cleanup_creatures() {
     creatures_.erase(std::remove_if(creatures_.begin(), creatures_.end(), [this](Creature& creature) {
                           if (!creature.is_alive()) {
-                              materials_.add(creature.reward());
+                              resource_manager_.income(creature.reward(),
+                                  "Defeated " + creature.name(), static_cast<int>(wave_index_));
                               return true;
                           }
                           if (creature.has_exited()) {
@@ -179,6 +203,11 @@ void Game::handle_goal(Creature& creature) {
     creature.mark_goal_reached();
     if (resource_units_ > 0) {
         --resource_units_;
+    }
+    breach_since_last_income_ = true;
+    const auto& steal = creature.steal_amount();
+    if (steal.wood() > 0 || steal.stone() > 0 || steal.crystal() > 0) {
+        resource_manager_.steal(steal, creature.name() + " theft", static_cast<int>(wave_index_));
     }
 
     if (map_.exits().empty()) {
@@ -224,7 +253,21 @@ void Game::render(std::ostream& os) const {
     const auto symbols = build_entity_symbols(creatures_, towers_);
     const auto lines = map_.render_with_entities(symbols);
     os << "Resources remaining: " << resource_units_ << '\n';
-    os << "Materials: " << materials_.to_string() << '\n';
+    os << "Materials: " << resource_manager_.materials().to_string() << '\n';
+    if (const auto summary = resource_manager_.last_wave_income()) {
+        os << "Last wave income (Wave " << summary->wave_index << "): " << summary->income.to_string();
+        os << " [" << (summary->flawless ? "Flawless" : "Damaged") << ", "
+           << (summary->early_call ? "Early" : "On-time") << "]\n";
+    }
+    os << "Recent transactions:\n";
+    if (resource_manager_.transactions().empty()) {
+        os << "  (none)\n";
+    } else {
+        for (const auto& tx : resource_manager_.transactions()) {
+            os << "  [" << transaction_kind_label(tx.kind) << "] " << tx.description << " -> "
+               << tx.delta.to_string() << '\n';
+        }
+    }
     for (const auto& line : lines) {
         os << line << '\n';
     }

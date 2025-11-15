@@ -4,6 +4,7 @@
 #include "Map.hpp"
 #include "Materials.hpp"
 #include "PathFinder.hpp"
+#include "ResourceManager.hpp"
 #include "Tower.hpp"
 #include "TowerFactory.hpp"
 #include "Wave.hpp"
@@ -26,7 +27,7 @@ public:
     void tick();
 
     [[nodiscard]] const Map& map() const noexcept { return map_; }
-    [[nodiscard]] const Materials& materials() const noexcept { return materials_; }
+    [[nodiscard]] const Materials& materials() const noexcept { return resource_manager_.materials(); }
     [[nodiscard]] int resource_units() const noexcept { return resource_units_; }
     [[nodiscard]] int current_wave_index() const noexcept { return static_cast<int>(wave_index_); }
     [[nodiscard]] bool is_over() const noexcept { return resource_units_ <= 0 && creatures_.empty() && pending_waves_.empty(); }
@@ -39,20 +40,27 @@ public:
 
 private:
     Map map_;
-    Materials materials_;
+    struct PendingWaveEntry {
+        Wave wave;
+        bool early_call_bonus{false};
+    };
+
+    ResourceManager resource_manager_;
     int resource_units_{};
     std::vector<TowerPtr> towers_{};
     std::vector<Creature> creatures_{};
-    std::deque<Wave> pending_waves_{};
+    std::deque<PendingWaveEntry> pending_waves_{};
     PathFinder path_finder_;
     std::size_t wave_index_{};
     std::size_t entry_spawn_index_{};
+    bool breach_since_last_income_{false};
 
     void spawn_creatures();
     void move_creatures();
     void towers_attack();
     void cleanup_creatures();
     void handle_goal(Creature& creature);
+    Tower* find_tower(const GridPosition& position);
     [[nodiscard]] std::optional<std::vector<GridPosition>> compute_path(const GridPosition& start, const GridPosition& goal);
     [[nodiscard]] std::optional<std::vector<GridPosition>> best_exit_path(const GridPosition& from);
     [[nodiscard]] std::optional<std::size_t> tower_index(const GridPosition& position) const;

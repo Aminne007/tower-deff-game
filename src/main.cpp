@@ -10,6 +10,14 @@
 
 using namespace towerdefense;
 
+namespace {
+const Materials kUpgradeCost{3, 2, 1};
+const Materials kOverdriveCost{1, 1, 1};
+constexpr int kUpgradeDamageBonus = 2;
+constexpr double kUpgradeRangeBonus = 0.5;
+constexpr double kDefaultRefundRatio = 0.6;
+}
+
 void print_help() {
     std::cout << "Commands:\n"
               << "  help - Show this message\n"

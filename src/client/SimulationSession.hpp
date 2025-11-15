@@ -3,6 +3,7 @@
 #include "towerdefense/Game.hpp"
 #include "towerdefense/Map.hpp"
 #include "towerdefense/Wave.hpp"
+#include "towerdefense/WaveManager.hpp"
 
 #include <filesystem>
 #include <memory>
@@ -26,6 +27,8 @@ public:
 
     void place_tower(const std::string& tower_id, const towerdefense::GridPosition& position);
     void queue_wave(const towerdefense::Wave& wave);
+    const towerdefense::WaveDefinition* queue_next_scripted_wave();
+    std::optional<towerdefense::WaveDefinition> preview_scripted_wave(std::size_t offset = 0) const;
     void tick();
 
 private:
@@ -35,6 +38,7 @@ private:
     std::unique_ptr<towerdefense::Game> game_;
     towerdefense::Materials initial_resources_;
     int max_waves_;
+    std::optional<towerdefense::WaveManager> wave_manager_;
 };
 
 } // namespace client

@@ -46,7 +46,6 @@ private:
     void draw_map(sf::RenderTarget& target) const;
     void draw_panels(sf::RenderTarget& target);
     void set_status(std::string message);
-    towerdefense::Wave build_default_wave() const;
 };
 
 } // namespace client

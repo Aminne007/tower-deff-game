@@ -29,11 +29,24 @@ void SimulationSession::load_level(const std::filesystem::path& level_path) {
     towerdefense::Map map = load_map(level_path);
     current_level_ = level_path;
     game_ = std::make_unique<Game>(map, initial_resources_, max_waves_);
+
+    std::filesystem::path waves_root = current_level_.parent_path();
+    if (waves_root.empty()) {
+        waves_root = std::filesystem::path{"data"};
+    }
+    waves_root /= "waves";
+    if (!std::filesystem::exists(waves_root)) {
+        waves_root = std::filesystem::path{"data"} / "waves";
+    }
+
+    const std::string map_identifier = current_level_.stem().string();
+    wave_manager_.emplace(std::move(waves_root), map_identifier);
 }
 
 void SimulationSession::unload() {
     game_.reset();
     current_level_.clear();
+    wave_manager_.reset();
 }
 
 bool SimulationSession::has_game() const { return static_cast<bool>(game_); }
@@ -54,6 +67,23 @@ void SimulationSession::queue_wave(const Wave& wave) {
         throw std::runtime_error("No active game to queue a wave in.");
     }
     game_->prepare_wave(wave);
+}
+
+const WaveDefinition* SimulationSession::queue_next_scripted_wave() {
+    if (!game_) {
+        throw std::runtime_error("No active game to queue a wave in.");
+    }
+    if (!wave_manager_) {
+        throw std::runtime_error("No wave manager is available for the current session.");
+    }
+    return wave_manager_->queue_next_wave(*game_);
+}
+
+std::optional<WaveDefinition> SimulationSession::preview_scripted_wave(std::size_t offset) const {
+    if (!wave_manager_) {
+        return std::nullopt;
+    }
+    return wave_manager_->preview(offset);
 }
 
 void SimulationSession::tick() {

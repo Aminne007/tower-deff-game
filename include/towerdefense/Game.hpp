@@ -20,6 +20,8 @@ public:
     Game(Map map, Materials starting_materials, int resource_units);
 
     void place_tower(const std::string& type, const GridPosition& position);
+    void upgrade_tower(const GridPosition& position);
+    Materials sell_tower(const GridPosition& position);
     void prepare_wave(Wave wave);
     void tick();
 
@@ -30,6 +32,8 @@ public:
     [[nodiscard]] bool is_over() const noexcept { return resource_units_ <= 0 && creatures_.empty() && pending_waves_.empty(); }
     [[nodiscard]] const std::vector<TowerPtr>& towers() const noexcept { return towers_; }
     [[nodiscard]] const std::vector<Creature>& creatures() const noexcept { return creatures_; }
+    [[nodiscard]] Tower* tower_at(const GridPosition& position);
+    [[nodiscard]] const Tower* tower_at(const GridPosition& position) const;
 
     void render(std::ostream& os) const;
 
@@ -51,6 +55,7 @@ private:
     void handle_goal(Creature& creature);
     [[nodiscard]] std::optional<std::vector<GridPosition>> compute_path(const GridPosition& start, const GridPosition& goal);
     [[nodiscard]] std::optional<std::vector<GridPosition>> best_exit_path(const GridPosition& from);
+    [[nodiscard]] std::optional<std::size_t> tower_index(const GridPosition& position) const;
 };
 
 } // namespace towerdefense

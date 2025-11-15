@@ -1,7 +1,7 @@
 #include "towerdefense/Game.hpp"
 #include "towerdefense/Map.hpp"
 #include "towerdefense/TowerFactory.hpp"
-#include "towerdefense/Wave.hpp"
+#include "towerdefense/WaveManager.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -24,20 +24,11 @@ void print_help() {
               << "  show - Render the current game state\n"
               << "  towers - List available tower types\n"
               << "  build <type> <x> <y> - Place a tower\n"
-              << "  upgrade <x> <y> - Spend materials to upgrade a tower\n"
-              << "  sell <x> <y> [refund] - Remove a tower and reclaim materials\n"
-              << "  overdrive <x> <y> - Spend materials to ready a tower ability\n"
+              << "  upgrade <x> <y> - Upgrade the tower at coordinates\n"
+              << "  sell <x> <y> - Sell the tower at coordinates\n"
               << "  wave - Start the next wave\n"
               << "  tick <n> - Advance the game by n ticks (default 1)\n"
               << "  quit - Exit the program\n";
-}
-
-Wave create_default_wave() {
-    Wave wave{2};
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}, Materials{1, 0, 0}});
-    wave.add_creature(Creature{"Orc", 10, 0.8, Materials{0, 1, 0}, Materials{0, 1, 0}});
-    return wave;
 }
 
 int main(int argc, char* argv[]) {
@@ -45,6 +36,7 @@ int main(int argc, char* argv[]) {
         const std::filesystem::path map_path = (argc > 1) ? std::filesystem::path{argv[1]} : std::filesystem::path{"data"} / "default_map.txt";
         Map map = Map::load_from_file(map_path.string());
         Game game{map, Materials{34, 34, 34}, 10};
+        WaveManager wave_manager{std::filesystem::path{"data"} / "waves", map_path.stem().string()};
 
         std::cout << "Tower Defense CLI" << std::endl;
         std::cout << "Loaded map: " << map_path << '\n';
@@ -89,47 +81,37 @@ int main(int argc, char* argv[]) {
                 std::size_t x{};
                 std::size_t y{};
                 if (!(input >> x >> y)) {
-                    std::cout << "Usage: upgrade <x> <y>\n";
+                    std::cout << "Invalid arguments. Usage: upgrade <x> <y>\n";
                     continue;
                 }
                 try {
-                    game.upgrade_tower(GridPosition{x, y}, kUpgradeCost, kUpgradeDamageBonus, kUpgradeRangeBonus);
-                    std::cout << "Upgraded tower at (" << x << ", " << y << ")\n";
+                    game.upgrade_tower(GridPosition{x, y});
+                    std::cout << "Tower at (" << x << ", " << y << ") upgraded.\n";
                 } catch (const std::exception& ex) {
-                    std::cout << "Upgrade failed: " << ex.what() << '\n';
+                    std::cout << "Failed to upgrade tower: " << ex.what() << '\n';
                 }
             } else if (command == "sell") {
                 std::size_t x{};
                 std::size_t y{};
-                double ratio = kDefaultRefundRatio;
                 if (!(input >> x >> y)) {
-                    std::cout << "Usage: sell <x> <y> [refund]\n";
+                    std::cout << "Invalid arguments. Usage: sell <x> <y>\n";
                     continue;
-                }
-                if (input >> ratio) {
-                    // optional ratio parsed
                 }
                 try {
-                    game.sell_tower(GridPosition{x, y}, ratio);
-                    std::cout << "Sold tower at (" << x << ", " << y << ")\n";
+                    const auto refund = game.sell_tower(GridPosition{x, y});
+                    std::cout << "Sold tower at (" << x << ", " << y << ") for " << refund.to_string() << '\n';
                 } catch (const std::exception& ex) {
-                    std::cout << "Sell failed: " << ex.what() << '\n';
-                }
-            } else if (command == "overdrive") {
-                std::size_t x{};
-                std::size_t y{};
-                if (!(input >> x >> y)) {
-                    std::cout << "Usage: overdrive <x> <y>\n";
-                    continue;
-                }
-                if (game.trigger_tower_overdrive(GridPosition{x, y}, kOverdriveCost)) {
-                    std::cout << "Activated overdrive for tower at (" << x << ", " << y << ")\n";
-                } else {
-                    std::cout << "Unable to trigger overdrive (tower missing or insufficient materials).\n";
+                    std::cout << "Failed to sell tower: " << ex.what() << '\n';
                 }
             } else if (command == "wave") {
-                game.prepare_wave(create_default_wave());
-                std::cout << "Wave queued. Use tick to simulate.\n";
+                if (const WaveDefinition* def = wave_manager.queue_next_wave(game)) {
+                    std::cout << "Queued wave '" << def->name << "' (" << def->total_creatures() << " enemies).\n";
+                    if (auto preview = wave_manager.preview()) {
+                        std::cout << "Next up: " << preview->name << " - " << preview->summary() << '\n';
+                    }
+                } else {
+                    std::cout << "No additional waves remain for this map.\n";
+                }
             } else if (command == "tick") {
                 int steps = 1;
                 if (!(input >> steps)) {

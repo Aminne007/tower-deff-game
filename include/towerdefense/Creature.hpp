@@ -10,7 +10,8 @@ namespace towerdefense {
 
 class Creature {
 public:
-    Creature(std::string name, int max_health, double speed, Materials reward, Materials steal = Materials{});
+    Creature(std::string name, int max_health, double speed, Materials reward, int armor = 0, int shield = 0,
+        bool flying = false, std::vector<std::string> behaviors = {});
 
     void assign_path(std::vector<GridPosition> path);
     void start_returning(std::vector<GridPosition> path);
@@ -27,7 +28,10 @@ public:
     [[nodiscard]] const std::string& name() const noexcept { return name_; }
     [[nodiscard]] int health() const noexcept { return health_; }
     [[nodiscard]] const Materials& reward() const noexcept { return reward_; }
-    [[nodiscard]] const Materials& steal_amount() const noexcept { return steal_amount_; }
+    [[nodiscard]] int armor() const noexcept { return armor_; }
+    [[nodiscard]] int shield() const noexcept { return shield_health_; }
+    [[nodiscard]] bool is_flying() const noexcept { return flying_; }
+    [[nodiscard]] const std::vector<std::string>& behaviors() const noexcept { return behaviors_; }
 
     void mark_goal_reached();
     void mark_exited();
@@ -47,7 +51,11 @@ private:
     double slow_factor_{1.0};
     int slow_duration_{0};
     Materials reward_;
-    Materials steal_amount_;
+    int armor_{0};
+    int max_shield_{0};
+    int shield_health_{0};
+    bool flying_{false};
+    std::vector<std::string> behaviors_{};
 };
 
 } // namespace towerdefense

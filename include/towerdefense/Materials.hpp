@@ -28,7 +28,6 @@ public:
     void add(MaterialType type, int amount);
     bool consume_if_possible(const Materials& cost);
     void add(const Materials& other);
-    [[nodiscard]] bool contains(const Materials& other) const noexcept;
     [[nodiscard]] Materials scaled(double factor) const;
 
     [[nodiscard]] std::string to_string() const;

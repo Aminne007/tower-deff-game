@@ -1,6 +1,7 @@
 #include "towerdefense/Game.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
@@ -73,42 +74,33 @@ void Game::place_tower(const std::string& type, const GridPosition& position) {
     path_finder_.invalidate_cache();
 }
 
-void Game::upgrade_tower(const GridPosition& position, const Materials& cost, int damage_bonus, double range_bonus) {
-    Tower* tower = find_tower(position);
-    if (!tower) {
-        throw std::runtime_error("No tower at the provided position");
+void Game::upgrade_tower(const GridPosition& position) {
+    auto index = tower_index(position);
+    if (!index) {
+        throw std::runtime_error("No tower at the specified position to upgrade");
     }
-    if (!resource_manager_.spend(cost, "Upgrade " + tower->name(), static_cast<int>(wave_index_))) {
-        throw std::runtime_error("Not enough materials to upgrade " + tower->name());
+    auto& tower = towers_.at(*index);
+    if (!tower->next_level()) {
+        throw std::runtime_error("Tower is already at maximum level");
     }
-    tower->upgrade(damage_bonus, range_bonus, 1);
+    const auto upgrade_cost = tower->next_level()->upgrade_cost;
+    if (!materials_.consume_if_possible(upgrade_cost)) {
+        throw std::runtime_error("Insufficient materials for upgrade");
+    }
+    tower->upgrade();
 }
 
-void Game::sell_tower(const GridPosition& position, double refund_ratio) {
-    refund_ratio = std::clamp(refund_ratio, 0.0, 1.0);
-    const auto it = std::find_if(towers_.begin(), towers_.end(), [&position](const TowerPtr& tower) {
-        return tower && tower->position() == position;
-    });
-    if (it == towers_.end()) {
-        throw std::runtime_error("No tower at the provided position");
+Materials Game::sell_tower(const GridPosition& position) {
+    auto index = tower_index(position);
+    if (!index) {
+        throw std::runtime_error("No tower at the specified position to sell");
     }
-    const Materials refund = (*it)->cost().scaled(refund_ratio);
-    resource_manager_.refund(refund, "Sold " + (*it)->name(), static_cast<int>(wave_index_));
+    const auto refund = towers_.at(*index)->sell_value();
+    materials_.add(refund);
     map_.set(position, TileType::Empty);
-    towers_.erase(it);
+    towers_.erase(towers_.begin() + static_cast<std::ptrdiff_t>(*index));
     path_finder_.invalidate_cache();
-}
-
-bool Game::trigger_tower_overdrive(const GridPosition& position, const Materials& cost) {
-    Tower* tower = find_tower(position);
-    if (!tower) {
-        return false;
-    }
-    if (!resource_manager_.spend_for_ability(cost, tower->name() + " overdrive", static_cast<int>(wave_index_))) {
-        return false;
-    }
-    tower->reset_cooldown();
-    return true;
+    return refund;
 }
 
 void Game::prepare_wave(Wave wave) {
@@ -186,18 +178,7 @@ void Game::towers_attack() {
         if (!tower->can_attack()) {
             continue;
         }
-        Creature* target = nullptr;
-        for (auto& creature : creatures_) {
-            if (!creature.is_alive() || creature.has_exited()) {
-                continue;
-            }
-            if (distance(tower->position(), creature.position()) <= tower->range()) {
-                target = &creature;
-                break;
-            }
-        }
-        if (target != nullptr) {
-            tower->attack(*target);
+        if (tower->attack(creatures_)) {
             tower->reset_cooldown();
         }
     }
@@ -293,13 +274,27 @@ void Game::render(std::ostream& os) const {
     os << "Active creatures: " << creatures_.size() << '\n';
 }
 
-Tower* Game::find_tower(const GridPosition& position) {
-    for (auto& tower : towers_) {
-        if (tower && tower->position() == position) {
-            return tower.get();
-        }
+Tower* Game::tower_at(const GridPosition& position) {
+    if (auto index = tower_index(position)) {
+        return towers_[*index].get();
     }
     return nullptr;
+}
+
+const Tower* Game::tower_at(const GridPosition& position) const {
+    if (auto index = tower_index(position)) {
+        return towers_[*index].get();
+    }
+    return nullptr;
+}
+
+std::optional<std::size_t> Game::tower_index(const GridPosition& position) const {
+    for (std::size_t i = 0; i < towers_.size(); ++i) {
+        if (towers_[i] && towers_[i]->position() == position) {
+            return i;
+        }
+    }
+    return std::nullopt;
 }
 
 } // namespace towerdefense

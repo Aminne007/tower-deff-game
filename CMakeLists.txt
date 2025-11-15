@@ -19,6 +19,7 @@ add_library(towerdefense
     src/Tower.cpp
     src/TowerFactory.cpp
     src/Wave.cpp
+    src/WaveManager.cpp
     src/GridPosition.cpp
     src/Materials.cpp
     src/ResourceManager.cpp
@@ -40,7 +41,15 @@ target_link_libraries(tower-defense-cli
 
 # --- GUI executable (SFML window) ---
 add_executable(tower-defense-gui
-src/gui/main_gui.cpp
+    src/gui/main_gui.cpp
+    src/client/GameApplication.cpp
+    src/client/SimulationSession.cpp
+    src/client/states/GameState.cpp
+    src/client/states/MainMenuState.cpp
+    src/client/states/LevelSelectState.cpp
+    src/client/states/GameplayState.cpp
+    src/client/states/PauseState.cpp
+    src/client/states/SummaryState.cpp
 )
 
 target_link_libraries(tower-defense-gui
@@ -50,6 +59,11 @@ target_link_libraries(tower-defense-gui
         sfml-window
         sfml-graphics
         sfml-audio
+)
+
+target_include_directories(tower-defense-gui
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # Copy SFML DLLs + data/ folder next to the GUI exe after build

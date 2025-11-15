@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 
 namespace towerdefense {
@@ -84,7 +85,8 @@ void Game::upgrade_tower(const GridPosition& position) {
         throw std::runtime_error("Tower is already at maximum level");
     }
     const auto upgrade_cost = tower->next_level()->upgrade_cost;
-    if (!materials_.consume_if_possible(upgrade_cost)) {
+    const std::string description = "Upgrade " + tower->name();
+    if (!resource_manager_.spend(upgrade_cost, description, static_cast<int>(wave_index_))) {
         throw std::runtime_error("Insufficient materials for upgrade");
     }
     tower->upgrade();
@@ -95,8 +97,10 @@ Materials Game::sell_tower(const GridPosition& position) {
     if (!index) {
         throw std::runtime_error("No tower at the specified position to sell");
     }
-    const auto refund = towers_.at(*index)->sell_value();
-    materials_.add(refund);
+    auto& tower = towers_.at(*index);
+    const auto refund = tower->sell_value();
+    const std::string description = "Sell " + tower->name();
+    resource_manager_.refund(refund, description, static_cast<int>(wave_index_));
     map_.set(position, TileType::Empty);
     towers_.erase(towers_.begin() + static_cast<std::ptrdiff_t>(*index));
     path_finder_.invalidate_cache();

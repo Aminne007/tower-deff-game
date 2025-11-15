@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
                 }
                 try {
                     game.upgrade_tower(GridPosition{x, y});
-                    std::cout << "Tower at (" << x << ", " << y << ") upgraded.\n";
+                    std::cout << "Tower at (" << x << ", " << y << ") upgraded (materials spent recorded).\n";
                 } catch (const std::exception& ex) {
                     std::cout << "Failed to upgrade tower: " << ex.what() << '\n';
                 }
@@ -99,7 +99,8 @@ int main(int argc, char* argv[]) {
                 }
                 try {
                     const auto refund = game.sell_tower(GridPosition{x, y});
-                    std::cout << "Sold tower at (" << x << ", " << y << ") for " << refund.to_string() << '\n';
+                    std::cout << "Sold tower at (" << x << ", " << y << ") for " << refund.to_string()
+                              << " (refund recorded).\n";
                 } catch (const std::exception& ex) {
                     std::cout << "Failed to sell tower: " << ex.what() << '\n';
                 }

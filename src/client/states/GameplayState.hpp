@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/states/GameState.hpp"
+#include "towerdefense/Materials.hpp"
 
 #include <vector>
 
@@ -10,6 +11,11 @@ struct TowerOption {
     std::string id;
     std::string label;
     sf::Color color;
+    int damage{};
+    double range{};
+    int fire_rate_ticks{};
+    towerdefense::Materials build_cost{};
+    std::string behavior;
 };
 
 class GameplayState : public GameState {
@@ -35,6 +41,7 @@ private:
 
     bool map_bounds_contains(const sf::Vector2f& point) const;
     void rebuild_layout();
+    void build_tower_options();
     void handle_click(const sf::Vector2f& pos);
     void draw_map(sf::RenderTarget& target) const;
     void draw_panels(sf::RenderTarget& target);

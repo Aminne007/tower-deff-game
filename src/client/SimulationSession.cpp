@@ -1,7 +1,6 @@
 #include "client/SimulationSession.hpp"
 
 #include <filesystem>
-#include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -20,80 +19,6 @@ Wave default_wave() {
     wave.add_creature(Creature{"Goblin", 5, 1.0, Materials{1, 0, 0}});
     wave.add_creature(Creature{"Orc", 10, 0.8, Materials{0, 1, 0}});
     return wave;
-}
-
-std::mt19937& random_engine() {
-    static std::mt19937 engine{std::random_device{}()};
-    return engine;
-}
-
-towerdefense::Map generate_random_map() {
-    constexpr std::size_t width = 12;
-    constexpr std::size_t height = 12;
-    std::vector<std::string> lines(height, std::string(width, '.'));
-
-    std::uniform_int_distribution<std::size_t> row_dist(0, height - 1);
-    const std::size_t entry_row = row_dist(random_engine());
-    const std::size_t exit_row = row_dist(random_engine());
-
-    towerdefense::GridPosition entry{0, entry_row};
-    towerdefense::GridPosition exit{width - 1, exit_row};
-    towerdefense::GridPosition resource{width / 2, height / 2};
-
-    auto mark_tile = [&](const towerdefense::GridPosition& pos, char tile) {
-        if (pos.x < width && pos.y < height) {
-            lines[pos.y][pos.x] = tile;
-        }
-    };
-
-    mark_tile(resource, 'R');
-    mark_tile(entry, 'E');
-    mark_tile(exit, 'X');
-
-    std::vector<towerdefense::GridPosition> path;
-    path.push_back(entry);
-    towerdefense::GridPosition cursor = entry;
-    while (cursor.x != exit.x || cursor.y != exit.y) {
-        std::vector<towerdefense::GridPosition> candidates;
-        if (cursor.x < exit.x) {
-            candidates.push_back(towerdefense::GridPosition{cursor.x + 1, cursor.y});
-        }
-        if (cursor.y < exit.y) {
-            candidates.push_back(towerdefense::GridPosition{cursor.x, cursor.y + 1});
-        }
-        if (cursor.y > exit.y) {
-            candidates.push_back(towerdefense::GridPosition{cursor.x, cursor.y - 1});
-        }
-        if (candidates.empty()) {
-            break;
-        }
-        std::uniform_int_distribution<std::size_t> pick(0, candidates.size() - 1);
-        cursor = candidates[pick(random_engine())];
-        path.push_back(cursor);
-    }
-
-    for (const auto& pos : path) {
-        if ((pos.x == entry.x && pos.y == entry.y) || (pos.x == exit.x && pos.y == exit.y)) {
-            continue;
-        }
-        if (pos.x == resource.x && pos.y == resource.y) {
-            continue;
-        }
-        mark_tile(pos, '#');
-    }
-
-    std::uniform_int_distribution<int> block_count(4, 10);
-    std::uniform_int_distribution<std::size_t> col_dist(0, width - 1);
-    const int blocks = block_count(random_engine());
-    for (int i = 0; i < blocks; ++i) {
-        const std::size_t x = col_dist(random_engine());
-        const std::size_t y = row_dist(random_engine());
-        if (lines[y][x] == '.' && !(x == resource.x && y == resource.y)) {
-            lines[y][x] = 'B';
-        }
-    }
-
-    return towerdefense::Map::from_lines(lines);
 }
 } // namespace
 
@@ -120,8 +45,9 @@ void SimulationSession::load_level(const std::filesystem::path& level_path) {
     wave_manager_.emplace(std::move(waves_root), map_identifier);
 }
 
-void SimulationSession::load_random_level() {
-    towerdefense::Map map = generate_random_map();
+void SimulationSession::load_random_level(towerdefense::RandomMapGenerator::Preset preset) {
+    const std::vector<std::string> lines = map_generator_.generate(preset);
+    towerdefense::Map map = towerdefense::Map::from_lines(lines);
     current_level_.clear();
     game_ = std::make_unique<Game>(map, initial_resources_, max_waves_);
     wave_manager_.reset();

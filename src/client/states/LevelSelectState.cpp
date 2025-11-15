@@ -33,8 +33,18 @@ LevelSelectState::LevelSelectState(SimulationSession& session, Dispatcher dispat
         level_buttons_.push_back(sf::FloatRect{width / 2.f - button_size.x / 2.f, start_y + i * (button_size.y + gap), button_size.x,
             button_size.y});
     }
+    const auto& presets = towerdefense::RandomMapGenerator::presets();
     const float random_top = start_y + static_cast<float>(levels_.size()) * (button_size.y + gap) + gap;
-    random_button_ = sf::FloatRect{width / 2.f - button_size.x / 2.f, random_top, button_size.x, button_size.y};
+    random_buttons_.reserve(presets.size());
+    for (std::size_t i = 0; i < presets.size(); ++i) {
+        const float top = random_top + static_cast<float>(i) * (button_size.y + gap);
+        RandomButton button{
+            sf::FloatRect{width / 2.f - button_size.x / 2.f, top, button_size.x, button_size.y},
+            presets[i].preset,
+            std::string{"Random ("} + presets[i].label + ")",
+        };
+        random_buttons_.push_back(std::move(button));
+    }
     back_button_ = sf::FloatRect{50.f, static_cast<float>(window_size_.y) - 80.f, 180.f, 50.f};
 }
 
@@ -45,13 +55,15 @@ void LevelSelectState::handle_event(const sf::Event& event) {
     const sf::Vector2f pos(static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y));
     for (std::size_t i = 0; i < level_buttons_.size(); ++i) {
         if (level_buttons_[i].contains(pos)) {
-            emit(GameEvent{GameEvent::Type::LevelChosen, levels_[i].path});
+            emit(GameEvent{GameEvent::Type::LevelChosen, levels_[i].path, std::nullopt});
             return;
         }
     }
-    if (random_button_.contains(pos)) {
-        emit(GameEvent::Type::RandomLevel);
-        return;
+    for (const auto& button : random_buttons_) {
+        if (button.rect.contains(pos)) {
+            emit(GameEvent{GameEvent::Type::RandomLevel, {}, button.preset});
+            return;
+        }
     }
     if (back_button_.contains(pos)) {
         emit(GameEvent::Type::Quit);
@@ -82,7 +94,9 @@ void LevelSelectState::render(sf::RenderTarget& target) {
         draw_button(target, font_, level_buttons_[i], label);
     }
 
-    draw_button(target, font_, random_button_, "Random Map");
+    for (const auto& button : random_buttons_) {
+        draw_button(target, font_, button.rect, button.label);
+    }
     draw_button(target, font_, back_button_, "Back");
 }
 

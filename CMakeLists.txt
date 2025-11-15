@@ -20,6 +20,7 @@ add_library(towerdefense
     src/TowerFactory.cpp
     src/Wave.cpp
     src/WaveManager.cpp
+    src/RandomMapGenerator.cpp
     src/GridPosition.cpp
     src/Materials.cpp
     src/ResourceManager.cpp

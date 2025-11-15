@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/SimulationSession.hpp"
+#include "towerdefense/RandomMapGenerator.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -24,6 +25,7 @@ struct GameEvent {
 
     Type type;
     std::filesystem::path level_path;
+    std::optional<towerdefense::RandomMapGenerator::Preset> random_preset;
 };
 
 class GameState {

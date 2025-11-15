@@ -171,7 +171,8 @@ void GameplayState::draw_map(sf::RenderTarget& target) const {
     for (std::size_t y = 0; y < map.height(); ++y) {
         for (std::size_t x = 0; x < map.width(); ++x) {
             tile.setPosition(map_origin_.x + static_cast<float>(x) * tile_size_, map_origin_.y + static_cast<float>(y) * tile_size_);
-            tile.setFillColor(tile_color(map.at(x, y)));
+            const auto tile_type = map.at(towerdefense::GridPosition{x, y});
+            tile.setFillColor(tile_color(tile_type));
             target.draw(tile);
         }
     }
@@ -219,8 +220,8 @@ void GameplayState::draw_panels(sf::RenderTarget& target) {
 
     if (const auto* game = session_.game()) {
         std::ostringstream os;
-        os << "Materials: " << game->materials().wood << "W / " << game->materials().stone << "S / " << game->materials().metal
-           << "M";
+        os << "Materials: " << game->materials().wood() << "W / " << game->materials().stone() << "S / "
+           << game->materials().crystal() << "C";
         sf::Text mats(os.str(), font_, 20);
         mats.setPosition(40.f, 100.f);
         target.draw(mats);

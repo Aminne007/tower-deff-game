@@ -1,16 +1,19 @@
 #include "towerdefense/Creature.hpp"
 
 #include <algorithm>
+#include <utility>
 #include <stdexcept>
+#include <random>
 
 namespace towerdefense {
 
-Creature::Creature(std::string name, int max_health, double speed, Materials reward, int armor, int shield, bool flying,
+Creature::Creature(std::string id, std::string name, int max_health, double speed, Materials reward, int armor, int shield, bool flying,
     std::vector<std::string> behaviors)
-    : name_(std::move(name))
+    : id_(std::move(id))
+    , name_(std::move(name))
     , max_health_(max_health)
     , health_(max_health)
-    , speed_(speed)
+    , speed_(std::max(0.05, speed * 0.25))
     , reward_(std::move(reward))
     , armor_(std::max(0, armor))
     , max_shield_(std::max(0, shield))
@@ -56,7 +59,11 @@ void Creature::apply_damage(int amount) {
         return;
     }
 
-    int remaining = amount;
+    static thread_local std::mt19937 rng{std::random_device{}()};
+    std::uniform_real_distribution<double> variance(0.85, 1.2);
+    const int varied_amount = std::max(1, static_cast<int>(std::llround(static_cast<double>(amount) * variance(rng))));
+
+    int remaining = varied_amount;
     if (shield_health_ > 0) {
         const int absorbed = std::min(shield_health_, remaining);
         shield_health_ -= absorbed;
@@ -110,5 +117,27 @@ void Creature::mark_exited() {
     carrying_resource_ = false;
 }
 
-} // namespace towerdefense
+std::pair<double, double> Creature::interpolated_position() const noexcept {
+    if (path_.empty()) {
+        return {static_cast<double>(current_position_.x), static_cast<double>(current_position_.y)};
+    }
+    const std::size_t next_index = std::min<std::size_t>(segment_index_ + 1, path_.size() - 1);
+    const GridPosition& a = path_[segment_index_];
+    const GridPosition& b = path_[next_index];
+    const double t = std::clamp(movement_progress_, 0.0, 1.0);
+    const double x = static_cast<double>(a.x) + (static_cast<double>(b.x) - static_cast<double>(a.x)) * t;
+    const double y = static_cast<double>(a.y) + (static_cast<double>(b.y) - static_cast<double>(a.y)) * t;
+    return {x, y};
+}
 
+void Creature::scale_health(double factor) {
+    const int new_max = std::max(1, static_cast<int>(std::llround(static_cast<double>(max_health_) * factor)));
+    max_health_ = new_max;
+    health_ = std::min(health_, max_health_);
+}
+
+void Creature::scale_speed(double factor) {
+    speed_ = std::max(0.05, speed_ * factor);
+}
+
+} // namespace towerdefense

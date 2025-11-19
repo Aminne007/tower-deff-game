@@ -1,0 +1,15 @@
+{
+  "background": "assets/backgrounds/default.jpg",
+  "lines": [
+    {
+      "speaker": "Commander Ryn",
+      "portrait": "assets/portraits/commander.jpg",
+      "text": "Maze Mode unlocked. The labyrinth ahead will keep shifting as we build."
+    },
+    {
+      "speaker": "{player}",
+      "portrait": "player",
+      "text": "Then every wall and tower matters. Keep eyes on the path length."
+    }
+  ]
+}

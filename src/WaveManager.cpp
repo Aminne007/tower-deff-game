@@ -10,6 +10,7 @@
 #include <fstream>
 #include <map>
 #include <optional>
+#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -102,10 +103,10 @@ private:
         }
         const char c = peek();
         if (c == '{') {
-            return parse_object();
+            return JsonValue(parse_object());
         }
         if (c == '[') {
-            return parse_array();
+            return JsonValue(parse_array());
         }
         if (c == '"') {
             return JsonValue(parse_string());
@@ -403,7 +404,8 @@ Creature build_creature_from_group(
     const bool flying = group.flying_override.value_or(blueprint.flying);
     std::vector<std::string> behaviors = blueprint.behaviors;
     behaviors.insert(behaviors.end(), group.extra_behaviors.begin(), group.extra_behaviors.end());
-    return Creature{blueprint.name, health, speed, reward, armor, shield, flying, behaviors};
+    Creature creature{blueprint.id, blueprint.name, health, speed, reward, armor, shield, flying, behaviors};
+    return creature;
 }
 
 } // namespace
@@ -469,9 +471,9 @@ WaveManager::WaveManager(std::filesystem::path waves_root, std::string map_ident
 const WaveDefinition* WaveManager::queue_next_wave(Game& game) {
     while (next_wave_index_ < waves_.size()) {
         const WaveDefinition& definition = waves_[next_wave_index_];
-        Wave wave{definition.spawn_interval_ticks, definition.initial_delay_ticks};
+        Wave wave{definition.spawn_interval_ticks, std::max(0, definition.initial_delay_ticks)};
         bool spawned = false;
-
+        std::vector<std::pair<Creature, std::optional<int>>> pool;
         for (const auto& group : definition.groups) {
             const auto creature_it = creatures_.find(group.creature_id);
             if (creature_it == creatures_.end()) {
@@ -480,7 +482,14 @@ const WaveDefinition* WaveManager::queue_next_wave(Game& game) {
             const int count = std::max(1, group.count);
             for (int i = 0; i < count; ++i) {
                 Creature creature = build_creature_from_group(creature_it->second, group, definition.reward_multiplier);
-                wave.add_creature(std::move(creature), group.spawn_interval_override);
+                pool.emplace_back(std::move(creature), group.spawn_interval_override);
+            }
+        }
+
+        if (!pool.empty()) {
+            std::shuffle(pool.begin(), pool.end(), rng_);
+            for (auto& entry : pool) {
+                wave.add_creature(std::move(entry.first), entry.second);
                 spawned = true;
             }
         }
@@ -592,15 +601,23 @@ void WaveManager::load_from_file(const std::filesystem::path& file_path) {
             }
         }
     }
+
+    if (!waves_.empty() && waves_.size() < 2 && !creatures_.empty()) {
+        EnemyGroupDefinition filler;
+        filler.creature_id = creatures_.begin()->first;
+        filler.creature_name = creatures_.begin()->second.name;
+        filler.count = 4;
+        waves_.push_back(build_default_wave("Reinforcements", {filler}, 2));
+    }
 }
 
 void WaveManager::load_default_definitions() {
     creatures_.clear();
     waves_.clear();
 
-    auto goblin = build_default_creature("goblin", "Goblin Scout", 6, 1.0, Materials{1, 0, 0}, 0, 0, false, {"nimble"});
-    auto brute = build_default_creature("brute", "Orc Brute", 14, 0.75, Materials{0, 1, 0}, 1, 0, false, {"stubborn"});
-    auto wyvern = build_default_creature("wyvern", "Wyvern", 18, 1.2, Materials{0, 0, 1}, 0, 4, true, {"flying"});
+    auto goblin = build_default_creature("goblin", "Goblin Scout", 10, 0.95, Materials{1, 0, 0}, 0, 0, false, {"nimble"});
+    auto brute = build_default_creature("brute", "Orc Brute", 28, 0.65, Materials{0, 1, 0}, 2, 0, false, {"stubborn"});
+    auto wyvern = build_default_creature("wyvern", "Wyvern", 26, 1.15, Materials{0, 0, 1}, 0, 4, true, {"flying", "arcane"});
 
     creatures_.emplace(goblin.id, goblin);
     creatures_.emplace(brute.id, brute);
@@ -622,9 +639,9 @@ void WaveManager::load_default_definitions() {
         return group;
     };
 
-    waves_.push_back(build_default_wave("Scouting Party", {make_group("goblin", 5)}, 2));
-    waves_.push_back(build_default_wave("Orcish Charge", {make_group("goblin", 4), make_group("brute", 2, 1.2, 0.9)}, 2));
-    waves_.push_back(build_default_wave("Sky Hunters", {make_group("wyvern", 3, 1.1, 1.1, 3)}, 2, 2));
+    waves_.push_back(build_default_wave("Scouting Party", {make_group("goblin", 12)}, 1));
+    waves_.push_back(build_default_wave("Orcish Charge", {make_group("goblin", 8), make_group("brute", 4, 1.2, 0.9)}, 1));
+    waves_.push_back(build_default_wave("Sky Hunters", {make_group("wyvern", 6, 1.1, 1.1, 2)}, 1, 1));
 }
 
 CreatureBlueprint WaveManager::build_default_creature(std::string id, std::string name, int health, double speed, Materials reward,

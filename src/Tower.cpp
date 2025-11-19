@@ -147,7 +147,9 @@ Creature* Tower::select_target(std::vector<Creature*>& candidates, TargetingMode
 
 void Tower::refresh_stats() {
     const auto& current_level = levels_.at(level_index_);
-    damage_ = current_level.damage;
+    // Globally reduce tower damage; higher levels scale more gently.
+    const double damage_scale = std::clamp(0.4 + 0.08 * static_cast<double>(level_index_), 0.4, 0.8);
+    damage_ = std::max(1, static_cast<int>(std::llround(static_cast<double>(current_level.damage) * damage_scale)));
     range_ = current_level.range;
     fire_rate_ticks_ = current_level.fire_rate_ticks;
 }

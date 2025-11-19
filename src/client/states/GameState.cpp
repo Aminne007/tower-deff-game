@@ -12,7 +12,7 @@ GameState::~GameState() = default;
 
 void GameState::emit(GameEvent::Type type) {
     if (dispatcher_) {
-        dispatcher_(GameEvent{type, {}, std::nullopt});
+        dispatcher_(GameEvent{type});
     }
 }
 

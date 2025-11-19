@@ -216,16 +216,8 @@ public:
         if (!primary) {
             return false;
         }
+        // Mortar shells now focus on a single target (no splash).
         primary->apply_damage(damage_);
-        const double splash_radius = 1.5 + 0.25 * static_cast<double>(level_index());
-        auto splash_targets = targets_in_radius(creatures, primary->position(), splash_radius);
-        for (auto* creature : splash_targets) {
-            if (creature == primary) {
-                continue;
-            }
-            const int splash_damage = std::max(1, damage_ / 2);
-            creature->apply_damage(splash_damage);
-        }
         return true;
     }
 };
@@ -262,20 +254,8 @@ public:
         if (!target) {
             return false;
         }
-        const int max_jumps = 2 + static_cast<int>(level_index());
-        const double jump_radius = range() * 0.6;
-        Creature* current = target;
-        int jump = 0;
-        int dealt_damage = damage_;
-        while (current && jump <= max_jumps) {
-            current->apply_damage(std::max(1, dealt_damage));
-            auto chained_candidates = targets_in_radius(creatures, current->position(), jump_radius);
-            chained_candidates.erase(std::remove(chained_candidates.begin(), chained_candidates.end(), current),
-                chained_candidates.end());
-            current = select_target(chained_candidates, TargetingMode::Weakest);
-            dealt_damage = static_cast<int>(static_cast<double>(dealt_damage) * 0.75);
-            ++jump;
-        }
+        // Single-target lightning strike.
+        target->apply_damage(damage_);
         return true;
     }
 };
@@ -293,15 +273,6 @@ public:
             return false;
         }
         primary->apply_damage(damage_);
-        if (candidates.size() <= 1) {
-            return true;
-        }
-        candidates.erase(std::remove(candidates.begin(), candidates.end(), primary), candidates.end());
-        const int extra_targets = std::min<std::size_t>(level_index() + 1, candidates.size());
-        for (int i = 0; i < extra_targets; ++i) {
-            Creature* secondary = candidates[i];
-            secondary->apply_damage(std::max(1, damage_ / 2));
-        }
         return true;
     }
 };
@@ -314,13 +285,12 @@ public:
 
     bool attack(std::vector<Creature>& creatures) override {
         auto victims = targets_in_range(creatures);
-        if (victims.empty()) {
+        Creature* target = select_target(victims);
+        if (!target) {
             return false;
         }
-        for (std::size_t i = 0; i < victims.size(); ++i) {
-            const int scaled_damage = (i == 0) ? damage_ : std::max(1, damage_ / 3);
-            victims[i]->apply_damage(scaled_damage);
-        }
+        // Single-target zap.
+        target->apply_damage(damage_);
         return true;
     }
 };

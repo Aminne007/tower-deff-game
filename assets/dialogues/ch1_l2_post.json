@@ -1,0 +1,15 @@
+{
+  "background": "assets/backgrounds/default.jpg",
+  "lines": [
+    {
+      "speaker": "Scout",
+      "portrait": "assets/portraits/scout.jpg",
+      "text": "They broke formation trying to chase us. The crystal still shines."
+    },
+    {
+      "speaker": "{player}",
+      "portrait": "player",
+      "text": "Each twist buys another volley. We will keep using the terrain."
+    }
+  ]
+}

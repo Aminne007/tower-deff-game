@@ -7,10 +7,17 @@ HelpState::HelpState(SimulationSession& session, Dispatcher dispatcher, const sf
     , window_size_(window_size)
     , instructions_({
           "Controls:",
-          "- Left click to interact with buttons and place towers.",
-          "- Use the Queue Wave button to send the next wave.",
-          "- Tick advances the simulation by one turn.",
-          "- Press Escape during gameplay to pause.",
+          "- Left click to select a tower card and place towers on empty ground.",
+          "- Use the Queue Wave button to start or call the next enemy wave.",
+          "- Tick advances the simulation by a single step for fine control.",
+          "- Press Escape during gameplay to pause and resume.",
+          "- Map Generator: pick a preset, reroll, and play the previewed layout.",
+          "- Map Creator: choose a brush, left click to paint, right click to erase.",
+          "",
+          "Goal:",
+          "- Enemies follow the path to the crystal in the center.",
+          "- Each enemy that reaches the crystal costs you lives.",
+          "- Build and upgrade towers to defeat waves before they reach the crystal.",
       }) {
     const float width = static_cast<float>(window_size_.x);
     back_button_ = sf::FloatRect{width / 2.f - 140.f, static_cast<float>(window_size_.y) - 140.f, 280.f, 60.f};
@@ -38,7 +45,7 @@ void HelpState::render(sf::RenderTarget& target) {
     title.setPosition(static_cast<float>(window_size_.x) / 2.f, 120.f);
     target.draw(title);
 
-    float y = 200.f;
+    float y = 210.f;
     for (const auto& line : instructions_) {
         sf::Text text(line, font_, line.rfind(':') != std::string::npos ? 30 : 22);
         text.setPosition(160.f, y);
@@ -46,9 +53,12 @@ void HelpState::render(sf::RenderTarget& target) {
         y += line.rfind(':') != std::string::npos ? 50.f : 34.f;
     }
 
+    const sf::Vector2i mouse = sf::Mouse::getPosition();
+    const sf::Vector2f mouse_f(static_cast<float>(mouse.x), static_cast<float>(mouse.y));
+
     sf::RectangleShape button({back_button_.width, back_button_.height});
     button.setPosition(back_button_.left, back_button_.top);
-    button.setFillColor(sf::Color(60, 70, 110));
+    button.setFillColor(back_button_.contains(mouse_f) ? sf::Color(80, 90, 135) : sf::Color(60, 70, 110));
     button.setOutlineThickness(2.f);
     button.setOutlineColor(sf::Color(200, 200, 200));
     target.draw(button);

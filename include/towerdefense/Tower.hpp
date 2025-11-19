@@ -51,7 +51,6 @@ public:
     [[nodiscard]] double range() const noexcept { return range_; }
     [[nodiscard]] int damage() const noexcept { return damage_; }
     [[nodiscard]] const Materials& cost() const noexcept { return cost_; }
-    [[nodiscard]] TargetingMode targeting_mode() const noexcept { return targeting_mode_; }
     [[nodiscard]] const TowerLevel& level() const noexcept { return levels_.at(level_index_); }
     [[nodiscard]] const TowerLevel* next_level() const noexcept;
     [[nodiscard]] std::size_t level_index() const noexcept { return level_index_; }
@@ -59,6 +58,8 @@ public:
     [[nodiscard]] Materials sell_value(double refund_ratio = 0.75) const;
     [[nodiscard]] const std::string& projectile_behavior() const noexcept { return projectile_behavior_; }
     [[nodiscard]] const Materials& invested_materials() const noexcept { return invested_materials_; }
+    void set_targeting_mode(TargetingMode mode) noexcept { targeting_mode_ = mode; }
+    [[nodiscard]] TargetingMode targeting_mode() const noexcept { return targeting_mode_; }
 
 protected:
     [[nodiscard]] std::vector<Creature*> targets_in_range(std::vector<Creature>& creatures) const;

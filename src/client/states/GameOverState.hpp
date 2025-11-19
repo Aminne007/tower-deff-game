@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace client {
 
@@ -12,7 +13,9 @@ class GameOverState : public GameState {
 public:
     GameOverState(SimulationSession& session, Dispatcher dispatcher, const sf::Font& font, sf::Vector2u window_size,
         std::string message, std::filesystem::path level_path,
-        std::optional<towerdefense::RandomMapGenerator::Preset> random_preset);
+        std::optional<towerdefense::RandomMapGenerator::Preset> random_preset,
+        std::optional<std::vector<std::string>> custom_lines,
+        std::string custom_name);
 
     void handle_event(const sf::Event& event) override;
     void update(const sf::Time& delta_time) override;
@@ -23,6 +26,8 @@ private:
     std::string message_;
     std::filesystem::path level_path_;
     std::optional<towerdefense::RandomMapGenerator::Preset> random_preset_;
+    std::optional<std::vector<std::string>> custom_lines_;
+    std::string custom_name_;
     sf::FloatRect retry_button_;
     sf::FloatRect menu_button_;
 };

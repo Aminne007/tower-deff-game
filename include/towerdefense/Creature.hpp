@@ -4,13 +4,14 @@
 #include "Materials.hpp"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace towerdefense {
 
 class Creature {
 public:
-    Creature(std::string name, int max_health, double speed, Materials reward, int armor = 0, int shield = 0,
+    Creature(std::string id, std::string name, int max_health, double speed, Materials reward, int armor = 0, int shield = 0,
         bool flying = false, std::vector<std::string> behaviors = {});
 
     void assign_path(std::vector<GridPosition> path);
@@ -27,16 +28,25 @@ public:
     [[nodiscard]] int current_segment() const noexcept { return static_cast<int>(segment_index_); }
     [[nodiscard]] const std::string& name() const noexcept { return name_; }
     [[nodiscard]] int health() const noexcept { return health_; }
+    [[nodiscard]] int max_health() const noexcept { return max_health_; }
     [[nodiscard]] const Materials& reward() const noexcept { return reward_; }
+    [[nodiscard]] const Materials& steal_amount() const noexcept { return reward_; }
     [[nodiscard]] int armor() const noexcept { return armor_; }
     [[nodiscard]] int shield() const noexcept { return shield_health_; }
     [[nodiscard]] bool is_flying() const noexcept { return flying_; }
+    [[nodiscard]] double speed() const noexcept { return speed_; }
     [[nodiscard]] const std::vector<std::string>& behaviors() const noexcept { return behaviors_; }
+    [[nodiscard]] const std::string& id() const noexcept { return id_; }
+    [[nodiscard]] int leak_damage() const noexcept { return 1; }
+    [[nodiscard]] std::pair<double, double> interpolated_position() const noexcept;
 
     void mark_goal_reached();
     void mark_exited();
+    void scale_health(double factor);
+    void scale_speed(double factor);
 
 private:
+    std::string id_;
     std::string name_;
     int max_health_{};
     int health_{};

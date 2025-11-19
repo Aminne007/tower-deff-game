@@ -1,0 +1,15 @@
+{
+  "background": "assets/backgrounds/default.jpg",
+  "lines": [
+    {
+      "speaker": "Commander Ryn",
+      "portrait": "assets/portraits/commander.jpg",
+      "text": "Burrowers and destroyers tried to tunnel through. Your rebuilds kept the route open."
+    },
+    {
+      "speaker": "{player}",
+      "portrait": "player",
+      "text": "So long as there is one path, we decide how painful it is."
+    }
+  ]
+}

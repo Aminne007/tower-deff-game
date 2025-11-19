@@ -1,0 +1,73 @@
+{
+  "creatures": [
+    {
+      "id": "goblin",
+      "name": "Maze Scout",
+      "health": 8,
+      "speed": 1.05,
+      "reward": { "wood": 1, "stone": 0, "crystal": 0 },
+      "behaviors": ["nimble"]
+    },
+    {
+      "id": "burrower",
+      "name": "Burrower",
+      "health": 12,
+      "speed": 0.95,
+      "reward": { "wood": 1, "stone": 1, "crystal": 0 },
+      "behaviors": ["burrower"]
+    },
+    {
+      "id": "destroyer",
+      "name": "Siege Destroyer",
+      "health": 26,
+      "speed": 0.7,
+      "armor": 2,
+      "reward": { "wood": 0, "stone": 1, "crystal": 1 },
+      "behaviors": ["destroyer"]
+    }
+  ],
+  "waves": [
+    {
+      "name": "Probe",
+      "spawn_interval": 1,
+      "groups": [{ "creature": "goblin", "count": 12 }]
+    },
+    {
+      "name": "Burrow Columns",
+      "spawn_interval": 1,
+      "groups": [
+        { "creature": "burrower", "count": 10, "speed_multiplier": 1.05 },
+        { "creature": "goblin", "count": 6 }
+      ]
+    },
+    {
+      "name": "Siege Breakers",
+      "spawn_interval": 1,
+      "reward_multiplier": 1.2,
+      "groups": [
+        { "creature": "destroyer", "count": 10, "health_multiplier": 1.1 }
+      ]
+    },
+    {
+      "name": "Tunneling Rush",
+      "spawn_interval": 1,
+      "groups": [
+        { "creature": "burrower", "count": 12, "speed_multiplier": 1.15 },
+        { "creature": "goblin", "count": 8, "speed_multiplier": 1.1 }
+      ]
+    },
+    {
+      "name": "Demolishers",
+      "spawn_interval": 1,
+      "initial_delay": 1,
+      "groups": [
+        {
+          "creature": "destroyer",
+          "count": 12,
+          "health_multiplier": 1.15,
+          "armor_bonus": 1
+        }
+      ]
+    }
+  ]
+}

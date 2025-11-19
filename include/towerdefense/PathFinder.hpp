@@ -16,7 +16,7 @@ public:
     explicit PathFinder(const Map& map);
 
     [[nodiscard]] std::optional<std::vector<GridPosition>> shortest_path(
-        const GridPosition& start, const GridPosition& goal);
+        const GridPosition& start, const GridPosition& goal, bool allow_tower_squeeze = false);
 
     void invalidate_cache();
 
@@ -32,4 +32,3 @@ private:
 };
 
 } // namespace towerdefense
-

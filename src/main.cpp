@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
             map = Map::load_from_file(map_path.string());
         }
 
-        Game game{map, Materials{34, 34, 34}, 10};
+        Game game{map, Materials{12, 10, 6}, 10};
         const std::string map_identifier = using_random_map ? std::string{"default_map"} : map_path.stem().string();
         WaveManager wave_manager{std::filesystem::path{"data"} / "waves", map_identifier};
 

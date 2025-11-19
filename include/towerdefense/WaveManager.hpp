@@ -4,6 +4,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -57,12 +58,14 @@ public:
     [[nodiscard]] std::optional<WaveDefinition> preview(std::size_t offset = 0) const;
     [[nodiscard]] std::vector<WaveDefinition> upcoming_waves(std::size_t max_count) const;
     [[nodiscard]] std::size_t remaining_waves() const noexcept;
+    [[nodiscard]] std::size_t total_waves() const noexcept { return waves_.size(); }
 
 private:
     std::filesystem::path waves_root_{};
     std::unordered_map<std::string, CreatureBlueprint> creatures_{};
     std::vector<WaveDefinition> waves_{};
     std::size_t next_wave_index_{0};
+    std::mt19937 rng_{std::random_device{}()};
 
     void load_from_file(const std::filesystem::path& file_path);
     void load_default_definitions();

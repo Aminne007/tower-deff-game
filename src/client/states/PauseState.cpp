@@ -36,9 +36,12 @@ void PauseState::render(sf::RenderTarget& target) {
     title.setPosition(static_cast<float>(window_size_.x) / 2.f, 200.f);
     target.draw(title);
 
+    const sf::Vector2i mouse = sf::Mouse::getPosition();
+    const sf::Vector2f mouse_f(static_cast<float>(mouse.x), static_cast<float>(mouse.y));
+
     sf::RectangleShape resume_box({resume_button_.width, resume_button_.height});
     resume_box.setPosition(resume_button_.left, resume_button_.top);
-    resume_box.setFillColor(sf::Color(70, 90, 120));
+    resume_box.setFillColor(resume_button_.contains(mouse_f) ? sf::Color(90, 110, 145) : sf::Color(70, 90, 120));
     target.draw(resume_box);
 
     sf::Text resume_text("Resume", font_, 24);
@@ -49,7 +52,7 @@ void PauseState::render(sf::RenderTarget& target) {
 
     sf::RectangleShape quit_box({quit_button_.width, quit_button_.height});
     quit_box.setPosition(quit_button_.left, quit_button_.top);
-    quit_box.setFillColor(sf::Color(120, 70, 70));
+    quit_box.setFillColor(quit_button_.contains(mouse_f) ? sf::Color(150, 90, 90) : sf::Color(120, 70, 70));
     target.draw(quit_box);
 
     sf::Text quit_text("Quit to Menu", font_, 24);

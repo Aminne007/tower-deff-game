@@ -15,8 +15,10 @@ PathFinder::PathFinder(const Map& map)
     : map_(&map) {}
 
 std::optional<std::vector<GridPosition>> PathFinder::shortest_path(
-    const GridPosition& start, const GridPosition& goal) {
-    for (const bool ignore_towers : {false, true}) {
+    const GridPosition& start, const GridPosition& goal, bool allow_tower_squeeze) {
+    const int attempts = allow_tower_squeeze ? 2 : 1;
+    for (int i = 0; i < attempts; ++i) {
+        const bool ignore_towers = (i == 1);
         const auto key = compute_cache_key(start, goal, ignore_towers) ^ cache_version_;
         if (auto it = cache_.find(key); it != cache_.end()) {
             if (!it->second.empty()) {
@@ -106,4 +108,3 @@ std::optional<std::vector<GridPosition>> PathFinder::bfs(
 }
 
 } // namespace towerdefense
-

@@ -16,18 +16,27 @@ namespace client {
 struct GameEvent {
     enum class Type {
         Play,
+        EnterGenerator,
+        EnterCreator,
         LevelChosen,
         RandomLevel,
+        GeneratedLevel,
         Pause,
         Resume,
         Help,
         GameOver,
+        Campaign,
+        CampaignAdvance,
+        Profile,
+        MainMenu,
         Quit,
     };
 
-    Type type;
-    std::filesystem::path level_path;
-    std::optional<towerdefense::RandomMapGenerator::Preset> random_preset;
+    Type type{};
+    std::filesystem::path level_path{};
+    std::optional<towerdefense::RandomMapGenerator::Preset> random_preset{};
+    std::vector<std::string> custom_map_lines{};
+    std::string custom_map_name{};
 };
 
 class GameState {

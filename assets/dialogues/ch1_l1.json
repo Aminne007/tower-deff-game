@@ -1,0 +1,15 @@
+{
+  "background": "assets/backgrounds/default.jpg",
+  "lines": [
+    {
+      "speaker": "Commander Ryn",
+      "portrait": "assets/portraits/commander.jpg",
+      "text": "Welcome, {player}. Scout squads report a maze of alleys around the crystal. We hold here."
+    },
+    {
+      "speaker": "{player}",
+      "portrait": "player",
+      "text": "Point me toward the chokepoints and I will build the towers."
+    }
+  ]
+}

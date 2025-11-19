@@ -37,6 +37,8 @@ private:
     std::vector<sf::FloatRect> level_buttons_;
     std::vector<RandomButton> random_buttons_;
     sf::FloatRect back_button_;
+    sf::FloatRect generator_button_;
+    sf::FloatRect creator_button_;
 };
 
 } // namespace client

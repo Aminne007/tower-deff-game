@@ -1,4 +1,4 @@
-#include "client/GameApplication.hpp"
+#include "../client/GameApplication.hpp"
 
 int main() {
     client::GameApplication app;

@@ -1,0 +1,90 @@
+{
+  "creatures": [
+    {
+      "id": "goblin",
+      "name": "Goblin Raider",
+      "health": 10,
+      "speed": 1.4,
+      "armor": 0,
+      "shield": 0,
+      "flying": false,
+      "behaviors": ["nimble"],
+      "reward": {"wood": 1, "stone": 0, "crystal": 0}
+    },
+    {
+      "id": "brute",
+      "name": "Orc Warmonger",
+      "health": 28,
+      "speed": 0.9,
+      "armor": 3,
+      "shield": 0,
+      "flying": false,
+      "behaviors": ["stubborn"],
+      "reward": {"wood": 0, "stone": 1, "crystal": 0}
+    },
+    {
+      "id": "wyvern",
+      "name": "Storm Wyvern",
+      "health": 32,
+      "speed": 1.4,
+      "armor": 0,
+      "shield": 7,
+      "flying": true,
+      "behaviors": ["flying", "arcane"],
+      "reward": {"wood": 0, "stone": 0, "crystal": 1}
+    },
+    {
+      "id": "harbinger",
+      "name": "Crystal Harbinger",
+      "health": 80,
+      "speed": 0.7,
+      "armor": 4,
+      "shield": 10,
+      "flying": false,
+      "behaviors": ["stubborn", "arcane"],
+      "reward": {"wood": 0, "stone": 0, "crystal": 4}
+    }
+  ],
+  "waves": [
+    {
+      "name": "Opening Raid",
+      "spawn_interval": 1,
+      "initial_delay": 0,
+      "reward_multiplier": 1.1,
+      "groups": [
+        {"creature": "goblin", "count": 14},
+        {"creature": "goblin", "count": 6, "speed_multiplier": 1.4}
+      ]
+    },
+    {
+      "name": "Iron Phalanx",
+      "spawn_interval": 1,
+      "initial_delay": 1,
+      "reward_multiplier": 1.3,
+      "groups": [
+        {"creature": "brute", "count": 10, "health_multiplier": 1.3, "armor_bonus": 2},
+        {"creature": "goblin", "count": 10, "speed_multiplier": 1.2}
+      ]
+    },
+    {
+      "name": "Tempest Wings",
+      "spawn_interval": 1,
+      "initial_delay": 2,
+      "reward_multiplier": 1.6,
+      "groups": [
+        {"creature": "wyvern", "count": 10, "spawn_interval": 2},
+        {"creature": "goblin", "count": 8, "speed_multiplier": 1.5}
+      ]
+    },
+    {
+      "name": "Crystal Siege",
+      "spawn_interval": 1,
+      "initial_delay": 2,
+      "reward_multiplier": 2.0,
+      "groups": [
+        {"creature": "harbinger", "count": 6, "health_multiplier": 1.2, "armor_bonus": 1},
+        {"creature": "brute", "count": 8, "health_multiplier": 1.5, "armor_bonus": 3}
+      ]
+    }
+  ]
+}

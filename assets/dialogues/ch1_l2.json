@@ -1,0 +1,15 @@
+{
+  "background": "assets/backgrounds/default.jpg",
+  "lines": [
+    {
+      "speaker": "Scout",
+      "portrait": "assets/portraits/scout.jpg",
+      "text": "Commander, the spiral path tightens near the crystal. They will try to sprint it."
+    },
+    {
+      "speaker": "{player}",
+      "portrait": "player",
+      "text": "Then we lengthen the run. New towers, more turns."
+    }
+  ]
+}

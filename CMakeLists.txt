@@ -8,6 +8,7 @@ if(WIN32)
     set(SFML_RUNTIME_DIR "" CACHE PATH "Directory containing SFML runtime DLLs")
 endif()
 
+set(SFML_DIR "C:/libs/sfml-2.6.2-install/lib/cmake/SFML")
 find_package(SFML 2.6 COMPONENTS system window graphics audio REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -48,6 +49,7 @@ target_link_libraries(tower-defense-cli
 add_executable(tower-defense-gui
     src/gui/main_gui.cpp
     src/client/GameApplication.cpp
+    src/client/DialogueLoader.cpp
     src/client/SimulationSession.cpp
     src/client/states/GameState.cpp
     src/client/states/GameOverState.cpp
@@ -57,6 +59,10 @@ add_executable(tower-defense-gui
     src/client/states/HelpState.cpp
     src/client/states/PauseState.cpp
     src/client/states/SummaryState.cpp
+    src/client/states/MapGeneratorState.cpp
+    src/client/states/MapEditorState.cpp
+    src/client/states/DialogueState.cpp
+    src/client/states/ProfileState.cpp
 )
 
 target_link_libraries(tower-defense-gui
@@ -79,6 +85,11 @@ add_custom_command(TARGET tower-defense-gui POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${CMAKE_SOURCE_DIR}/data
             $<TARGET_FILE_DIR:tower-defense-gui>/data
+)
+add_custom_command(TARGET tower-defense-gui POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets
+            $<TARGET_FILE_DIR:tower-defense-gui>/assets
 )
 
 if(WIN32)

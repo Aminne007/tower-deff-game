@@ -1,0 +1,15 @@
+{
+  "background": "assets/backgrounds/default.jpg",
+  "lines": [
+    {
+      "speaker": "Commander Ryn",
+      "portrait": "assets/portraits/commander.jpg",
+      "text": "Good work. The scouts thought this outpost would fall in minutes."
+    },
+    {
+      "speaker": "{player}",
+      "portrait": "player",
+      "text": "The maze slowed them down. We turned it against them."
+    }
+  ]
+}

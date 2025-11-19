@@ -1,0 +1,79 @@
+{
+  "creatures": [
+    {
+      "id": "goblin",
+      "name": "Goblin Skirmisher",
+      "health": 8,
+      "speed": 1.2,
+      "armor": 0,
+      "shield": 0,
+      "flying": false,
+      "behaviors": ["nimble"],
+      "reward": {"wood": 1, "stone": 0, "crystal": 0}
+    },
+    {
+      "id": "brute",
+      "name": "Orc Vanguard",
+      "health": 22,
+      "speed": 0.8,
+      "armor": 2,
+      "shield": 0,
+      "flying": false,
+      "behaviors": ["stubborn"],
+      "reward": {"wood": 0, "stone": 1, "crystal": 0}
+    },
+    {
+      "id": "wyvern",
+      "name": "Azure Wyvern",
+      "health": 26,
+      "speed": 1.3,
+      "armor": 0,
+      "shield": 6,
+      "flying": true,
+      "behaviors": ["flying", "arcane"],
+      "reward": {"wood": 0, "stone": 0, "crystal": 1}
+    }
+  ],
+  "waves": [
+    {
+      "name": "Probe the Defenses",
+      "spawn_interval": 1,
+      "initial_delay": 0,
+      "reward_multiplier": 1.1,
+      "groups": [
+        {"creature": "goblin", "count": 12},
+        {"creature": "goblin", "count": 6, "speed_multiplier": 1.3}
+      ]
+    },
+    {
+      "name": "Staggered Assault",
+      "spawn_interval": 1,
+      "initial_delay": 1,
+      "reward_multiplier": 1.2,
+      "groups": [
+        {"creature": "goblin", "count": 10, "speed_multiplier": 1.1},
+        {"creature": "brute", "count": 6, "health_multiplier": 1.2, "armor_bonus": 1}
+      ]
+    },
+    {
+      "name": "Sky Raiders",
+      "spawn_interval": 1,
+      "initial_delay": 2,
+      "reward_multiplier": 1.4,
+      "groups": [
+        {"creature": "wyvern", "count": 8, "spawn_interval": 2},
+        {"creature": "goblin", "count": 6, "speed_multiplier": 1.4}
+      ]
+    },
+    {
+      "name": "Shielded Spearhead",
+      "spawn_interval": 1,
+      "initial_delay": 2,
+      "reward_multiplier": 1.6,
+      "groups": [
+        {"creature": "brute", "count": 10, "health_multiplier": 1.5, "armor_bonus": 2},
+        {"creature": "wyvern", "count": 6, "shield_bonus": 4, "spawn_interval": 2}
+      ]
+    }
+  ]
+}
